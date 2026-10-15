@@ -1,0 +1,34 @@
+# SNEHA analytics and review-flag configuration.
+#
+# These thresholds decide when a REPEATED change in activity behaviour is worth a
+# caregiver or clinician taking a look. They are review prompts about game behaviour,
+# NOT clinical thresholds, and never indicate or measure any medical condition.
+# Bump `config_version` whenever a value changes; it is printed in every report.
+
+config_version = "2026.10.1"
+
+[baseline]
+# The person's own earlier activity, immediately before the period being reviewed.
+window_days = 28
+min_results = 10        # fewer earlier results → no baseline comparison is made
+min_days = 4            # earlier results must span at least this many distinct days
+
+[period]
+min_results = 6         # fewer results in the period → no change flags are raised
+min_days = 3            # results must span at least this many distinct days (never one session)
+
+[review]
+# A change flag needs BOTH a large enough overall change AND the change on most days
+# (`min_share_of_days`), so a single difficult session or day cannot raise it.
+min_share_of_days = 0.66
+accuracy_drop = 0.15            # absolute drop in mean score (0–1 scale)
+response_time_increase = 0.30   # relative increase in median response time (0.30 = 30 %)
+interruption_rate_increase = 0.20   # absolute increase in share of results stopped part-way
+min_sessions_for_interruptions = 4
+hint_rate_increase = 0.50       # extra hints per result on average
+low_engagement_min_answers = 5  # needs this many "did you enjoy it?" answers
+low_engagement_share = 0.5      # share answered "not enjoyed"
+data_gap_share = 0.5            # share of elapsed days with no activity
+data_gap_consecutive_days = 3   # or this many missing days in a row
+fatigue_min_signals = 3         # fatigue reports / fatigue-ended sessions / fatigue observations
+fatigue_min_days = 2            # spread over at least this many days

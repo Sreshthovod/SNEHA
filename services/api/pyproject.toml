@@ -1,0 +1,67 @@
+[project]
+name = "sneha-api"
+version = "0.1.0"
+description = "SNEHA backend API: authorization, persistence, sync, conversation orchestration, analytics and reports."
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "alembic>=1.20.0,<2",
+    "argon2-cffi>=25.1",
+    "fastapi>=0.143.1,<1",
+    "psycopg[binary]>=3.3.6,<4",
+    "pydantic[email]>=2.14.1,<3",
+    "pydantic-settings>=2.16.0,<3",
+    "python-multipart>=0.0.20",
+    "sqlalchemy>=2.1.4,<2.2",
+    "uvicorn[standard]>=0.54.0,<1",
+    "pandas>=2.2",
+    "numpy>=2.0",
+    "reportlab>=4.2",
+    "google-genai>=2.3",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "pytest>=9.1.1,<10",
+    "ruff>=0.17.0",
+]
+speech = [
+    "faster-whisper>=1.2",
+]
+
+[tool.uv]
+# `speech` (faster-whisper) is installed by default; deploy without it via `uv sync --no-group speech`.
+default-groups = ["dev", "speech"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "postgres: requires a reachable PostgreSQL database (SNEHA_TEST_POSTGRES_URL)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# Generated migration scripts are reviewed by hand, not linted.
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "DTZ"]
+ignore = []
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency factories are evaluated once at import time by design.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.File",
+    "app.api.deps.patient_access",
+    "app.api.deps.require_roles",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]  # synthetic fixture passwords

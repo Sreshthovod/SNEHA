@@ -1,0 +1,108 @@
+# Activity specifications served by GET /api/v1/activities/catalog.
+# One table per catalog slug. `levels` must cover the slug's min..max difficulty.
+# Instructions are plain, respectful English; clients translate via their string tables.
+
+[picture-pairs]
+instructions = "Turn over two cards at a time. Find the pictures that match."
+hint = "The matching card glows for a moment."
+evaluation = "score = pairs found ÷ pairs, reduced slightly for extra turns; never below 0"
+stop = "Stop is always visible. Stopping keeps what was done and is not counted as a mistake."
+accessibility = "Large cards, no time limit, picture plus word on every card."
+levels = [
+  { level = 1, pairs = 3 }, { level = 2, pairs = 4 }, { level = 3, pairs = 6 },
+  { level = 4, pairs = 8 }, { level = 5, pairs = 10 },
+]
+
+[photo-recall]
+instructions = "Look at the photo. Choose what it shows."
+hint = "One wrong choice is removed."
+evaluation = "score = correct first answers ÷ questions"
+stop = "Stop is always visible. Stopping keeps what was done and is not counted as a mistake."
+accessibility = "Only caregiver-approved photos. The answer is always shown afterwards."
+levels = [
+  { level = 1, options = 2, questions = 3 }, { level = 2, options = 3, questions = 4 },
+  { level = 3, options = 3, questions = 5 }, { level = 4, options = 4, questions = 5 },
+  { level = 5, options = 4, questions = 6 },
+]
+
+[familiar-faces]
+instructions = "Here is a name. Tap the photo of that person."
+hint = "One wrong photo is removed."
+evaluation = "score = correct first answers ÷ questions"
+stop = "Stop is always visible. Stopping keeps what was done and is not counted as a mistake."
+accessibility = "Only caregiver-approved people. Relationship words come only from the Memory Bank."
+levels = [
+  { level = 1, options = 2, questions = 3 }, { level = 2, options = 3, questions = 4 },
+  { level = 3, options = 4, questions = 5 },
+]
+
+[daily-sequence]
+instructions = "Put the steps in the order you would do them."
+hint = "The next correct step is highlighted."
+evaluation = "score = steps placed correctly on the first try ÷ steps"
+stop = "Stop is always visible. Stopping keeps what was done and is not counted as a mistake."
+accessibility = "Tap steps in order; no dragging needed."
+levels = [
+  { level = 1, steps = 3 }, { level = 2, steps = 4 }, { level = 3, steps = 5 },
+  { level = 4, steps = 6 }, { level = 5, steps = 7 },
+]
+
+[name-the-object]
+instructions = "Look at the picture. Choose its name."
+hint = "One wrong word is removed."
+evaluation = "score = correct first answers ÷ questions"
+stop = "Stop is always visible. Stopping keeps what was done and is not counted as a mistake."
+accessibility = "Large pictures; words can be read aloud where voice is available."
+levels = [
+  { level = 1, options = 2, questions = 4 }, { level = 2, options = 3, questions = 5 },
+  { level = 3, options = 4, questions = 6 },
+]
+
+[sort-into-groups]
+instructions = "Put each thing into the group where it belongs."
+hint = "The right group is highlighted."
+evaluation = "score = items placed correctly on the first try ÷ items"
+stop = "Stop is always visible. Stopping keeps what was done and is not counted as a mistake."
+accessibility = "Tap an item, then tap its group; no dragging needed."
+levels = [
+  { level = 1, groups = 2, items = 4 }, { level = 2, groups = 2, items = 6 },
+  { level = 3, groups = 3, items = 8 },
+]
+
+[story-time]
+instructions = "Let's look at a memory together and talk about it."
+hint = "A gentle question is offered."
+evaluation = "Not scored. Only taking part and enjoyment are recorded."
+stop = "Stop is always visible."
+accessibility = "No right or wrong answers."
+levels = [{ level = 1, prompts = 3 }]
+
+[word-partners]
+instructions = "Choose the word that goes with the first word."
+hint = "One wrong word is removed."
+evaluation = "score = correct first answers ÷ questions"
+stop = "Stop is always visible. Stopping keeps what was done and is not counted as a mistake."
+accessibility = "Familiar regional words."
+levels = [
+  { level = 1, options = 2 }, { level = 2, options = 3 }, { level = 3, options = 3 },
+  { level = 4, options = 4 }, { level = 5, options = 4 },
+]
+
+[spot-the-different]
+instructions = "Find the picture that is different."
+hint = "Two of the same pictures are dimmed."
+evaluation = "score = correct first answers ÷ questions"
+stop = "Stop is always visible. Stopping keeps what was done and is not counted as a mistake."
+accessibility = "High-contrast pictures; no time limit."
+levels = [
+  { level = 1, options = 3 }, { level = 2, options = 4 }, { level = 3, options = 5 },
+  { level = 4, options = 6 }, { level = 5, options = 8 },
+]
+
+[today-together]
+instructions = "Let's talk about today: the day, the season and where we are."
+hint = "The answer is shown."
+evaluation = "Not graded; the answer is always shown."
+stop = "Stop is always visible."
+accessibility = "Gentle, never a test."
+levels = [{ level = 1 }, { level = 2 }, { level = 3 }]

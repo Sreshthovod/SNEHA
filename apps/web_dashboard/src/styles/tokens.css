@@ -1,0 +1,102 @@
+/*
+ * SNEHA design tokens. All colours meet WCAG 2.2 AA contrast (4.5:1 for text)
+ * against their paired surface in both light and dark themes.
+ */
+:root {
+  color-scheme: light dark;
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  --font-size-sm: 0.9375rem; /* 15px */
+  --font-size-md: 1.0625rem; /* 17px base: dashboards are read for long periods */
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.625rem;
+  --font-size-2xl: 2rem;
+  --line-height: 1.6;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --control-min-height: 44px; /* WCAG 2.5.5 target size */
+  --content-max-width: 72rem;
+
+  --color-bg: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-surface-muted: #efede6;
+  --color-border: #d6d2c4;
+  --color-text: #1d1b16;
+  --color-text-muted: #55514a;
+  --color-primary: #8a3b12;
+  --color-primary-contrast: #ffffff;
+  --color-focus: #1a5fb4;
+  --color-success-bg: #e3f1e5;
+  --color-success-text: #1b5e20;
+  --color-warning-bg: #fdf0d5;
+  --color-warning-text: #7a4b00;
+  --color-danger-bg: #fbe4e2;
+  --color-danger-text: #9b1c1c;
+  --color-neutral-bg: #ebe9e2;
+  --color-neutral-text: #3d3a34;
+  --color-info-bg: #e6eef8;
+  --color-info-text: #173c66;
+  --color-chart: #5c6b8a;
+  --color-chart-track: #e8e6df;
+  --shadow-card: 0 1px 2px rgb(29 27 22 / 6%), 0 4px 16px rgb(29 27 22 / 4%);
+  --transition: 120ms ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #15140f;
+    --color-surface: #1f1d18;
+    --color-surface-muted: #2a2822;
+    --color-border: #45413a;
+    --color-text: #f3f1ea;
+    --color-text-muted: #c2bdb1;
+    --color-primary: #f0a46e;
+    --color-primary-contrast: #1d1b16;
+    --color-focus: #8cb8ff;
+    --color-success-bg: #18321b;
+    --color-success-text: #a5d6a7;
+    --color-warning-bg: #3a2c0c;
+    --color-warning-text: #ffd27a;
+    --color-danger-bg: #3d1614;
+    --color-danger-text: #ffaba3;
+    --color-neutral-bg: #2d2b25;
+    --color-neutral-text: #ddd8cc;
+    --color-info-bg: #142338;
+    --color-info-text: #a9c8f0;
+    --color-chart: #9fb0d4;
+    --color-chart-track: #34322b;
+    --shadow-card: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition: none;
+  }
+}
+
+/* Viewer preferences set from Settings (data attributes on <html>). */
+:root[data-text-size='large'] {
+  font-size: 112.5%;
+}
+:root[data-text-size='larger'] {
+  font-size: 125%;
+}
+:root[data-contrast='high'] {
+  --color-text: #000000;
+  --color-text-muted: #2b2924;
+  --color-border: #4a463d;
+  --color-bg: #ffffff;
+  --color-surface-muted: #e9e7e0;
+}
+:root[data-motion='reduced'] {
+  --transition: none;
+}

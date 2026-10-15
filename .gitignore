@@ -1,0 +1,55 @@
+# --- Secrets & local config (never commit) ---
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+*.key
+service-account*.json
+
+# --- OS / editors ---
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# --- Python (services/api) ---
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- Local databases & runtime data ---
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+services/api/var/
+services/api/media/
+
+# --- AI model weights: download explicitly, never commit ---
+# Repo-root only: a bare `models/` would also ignore services/api/app/models/.
+/models/
+*.onnx
+*.tflite
+*.bin
+*.gguf
+*.safetensors
+
+# --- Node (apps/web_dashboard) ---
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# --- Flutter (apps/patient_app has its own .gitignore too) ---
+apps/patient_app/build/
+apps/patient_app/.dart_tool/
+
+# --- Logs ---
+*.log

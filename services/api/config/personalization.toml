@@ -1,0 +1,67 @@
+# SNEHA personalization engine configuration.
+#
+# These are ENGAGEMENT rules for choosing a comfortable, enjoyable activity.
+# They are NOT clinical thresholds and say nothing about any medical condition.
+# Bump `config_version` on every change; it is stored with each recommendation.
+
+config_version = "2026.10.1"
+
+[difficulty]
+success_score = 0.8              # score at/above this counts towards a step up...
+max_hints_for_success = 1        # ...if no more than this many hints were used...
+slow_response_factor = 1.5       # ...and mean response time <= baseline * factor (if both known)
+struggle_score = 0.5             # score below this counts towards a step down
+increase_after_successes = 3     # consecutive successes needed to step up one level
+decrease_after_struggles = 2     # consecutive struggles needed to step down one level
+min_results_between_changes = 3  # anti-oscillation: results at a level before it can change again
+hints_after_struggles = 1        # offer hints after this many consecutive struggles
+history_window = 40              # most recent results per activity that are replayed
+
+[selection]
+recent_window = 5                # last N results checked for repetition
+repeat_last_penalty = 60         # never pick the same activity twice in a row unless it is the only one
+repeat_recent_penalty = 15       # per appearance in the recent window
+interest_match_bonus = 20        # per matching approved interest tag
+interest_bonus_cap = 40
+context_match_bonus = 10         # per tag from the current conversation that matches (transient, weaker than approved interests)
+enjoyed_bonus = 15               # per "enjoyed" answer in the activity's last 5 results
+not_enjoyed_penalty = 25         # per "not enjoyed" answer in the activity's last 5 results
+interruption_penalty = 10        # per non-fatigue interruption in the activity's last 5 results
+familiar_bonus = 10              # activity completed at least once before
+low_engagement_window = 3        # last N results across all activities...
+low_engagement_threshold = 2     # ...if at least this many were interruptions or "not enjoyed", switch
+cold_start_order = [
+  "picture-pairs", "name-the-object", "sort-into-groups", "daily-sequence",
+  "photo-recall", "familiar-faces", "story-time",
+]
+
+[fatigue]
+feedback_window_hours = 3        # fatigue reported in results / fatigue-ended sessions this recent
+observation_window_hours = 8     # caregiver "fatigue" observations this recent
+low_effort_slugs = ["story-time", "picture-pairs", "name-the-object"]
+break_minutes = 10
+
+[memory]
+min_photo_memories = 3           # photo-recall needs this many approved memories with photos
+min_person_photo_memories = 2    # familiar-faces needs this many approved people with photos
+min_story_memories = 1           # story-time needs at least one approved memory
+min_routine_items = 3            # daily-sequence uses the patient's own routines if at least this many
+items_per_activity = 6
+recent_use_recommendations = 3   # avoid re-using memories from the last N recommendations
+
+# Interests (approved tags) that make an activity a good match.
+[activity_interest_tags]
+"picture-pairs" = ["animals", "nature", "flowers", "festivals", "birds"]
+"name-the-object" = ["household", "cooking", "tools", "market", "farming"]
+"sort-into-groups" = ["cooking", "food", "clothes", "gardening", "household", "market"]
+"daily-sequence" = ["cooking", "tea", "prayer", "gardening", "routine", "weaving"]
+
+# Languages with bundled content. "*" = no language-specific content needed.
+[content_languages]
+"picture-pairs" = ["*"]
+"photo-recall" = ["*"]
+"familiar-faces" = ["*"]
+"story-time" = ["*"]
+"name-the-object" = ["en", "hi", "as", "bn"]
+"sort-into-groups" = ["en", "hi", "as", "bn"]
+"daily-sequence" = ["en", "hi", "as", "bn"]
