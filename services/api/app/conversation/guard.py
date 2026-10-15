@@ -11,8 +11,8 @@ Rules (applied to EVERY provider, including the deterministic one):
 - Memory candidates must be grounded in the person's words, must not duplicate an
   existing memory, and are never saved automatically.
 - Any text with diagnostic or decline language is dropped.
-- Distress, fatigue and stop are OR-ed with the deterministic keyword detector, so a
-  model can never hide an explicit safety signal.
+- Distress, fatigue and stop are OR-ed across the model's flags, the model's intents and
+  the deterministic keyword detector, so a model can never hide an explicit safety signal.
 """
 
 import re
@@ -198,10 +198,11 @@ def apply_guard(extraction: ModelExtraction, message: str, context: PatientConte
         )
         g.candidates.append(GuardedCandidate(c.title, c.kind, description))
 
-    detected = set(detect_intents(message))
-    g.distress = extraction.distress_expressed or Intent.EXPRESS_DISTRESS in detected
-    g.fatigue = extraction.fatigue_expressed or Intent.EXPRESS_FATIGUE in detected
-    g.stop = extraction.stop_requested or Intent.REQUEST_STOP in detected
+    # Model flags, model intents and keywords can each only ESCALATE a safety signal.
+    signals = set(detect_intents(message)) | set(extraction.intents)
+    g.distress = extraction.distress_expressed or Intent.EXPRESS_DISTRESS in signals
+    g.fatigue = extraction.fatigue_expressed or Intent.EXPRESS_FATIGUE in signals
+    g.stop = extraction.stop_requested or Intent.REQUEST_STOP in signals
     for flag, intent in (
         (g.distress, Intent.EXPRESS_DISTRESS),
         (g.fatigue, Intent.EXPRESS_FATIGUE),

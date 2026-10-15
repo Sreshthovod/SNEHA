@@ -75,6 +75,89 @@ void main() {
     expect(helper.reply('memory', ctx).text, contains('Synthetic tea garden'));
   });
 
+  test(
+    'feeling unwell or scared while asking to stop gets the safety reply',
+    () {
+      for (final text in ['Please stop, I feel dizzy', "Stop, I'm scared"]) {
+        final r = helper.reply(text, ctx);
+        expect(r.intent, isNot(HelperIntent.unknown), reason: text);
+        expect(r.intent, isNot(HelperIntent.stop), reason: text);
+        expect(r.text, contains('112'), reason: text);
+      }
+    },
+  );
+
+  test('stop always wins, in English and the draft Indic forms', () {
+    for (final text in [
+      'stop',
+      'No, stop',
+      'no no stop it',
+      "I'm tired, stop",
+      'enough',
+      'I want to stop',
+      "I don't want to do this anymore",
+      'रुकिए',
+      'रुको',
+      'बस करो',
+      'बस',
+      'থামুন',
+      'থামো',
+      'বন্ধ করুন',
+      'ৰখক',
+      'ৰখা',
+      'বন্ধ কৰক',
+    ]) {
+      final r = helper.reply(text, ctx);
+      expect(r.intent, HelperIntent.stop, reason: text);
+      expect(r.text, contains('stop now'), reason: text);
+      expect(r.intent.label, 'request_stop');
+    }
+    expect(helper.classify('बस्ती'), isNot(HelperIntent.stop));
+    expect(
+      OfflineHelper(AppStrings('hi')).reply('रुको', ctx).text,
+      contains('रुक'),
+    );
+  });
+
+  test('tiredness gets a rest suggestion, but "not tired" does not', () {
+    for (final text in [
+      "I'm tired",
+      'No, I am so tired',
+      'I am sleepy',
+      'मैं थक गया हूँ',
+      'আমি ক্লান্ত',
+    ]) {
+      final r = helper.reply(text, ctx);
+      expect(r.intent, HelperIntent.tired, reason: text);
+      expect(r.text, contains('rest'), reason: text);
+    }
+    expect(helper.classify("I'm not tired"), isNot(HelperIntent.tired));
+    expect(helper.classify('मैं थका नहीं हूँ'), isNot(HelperIntent.tired));
+  });
+
+  test('fear and being lost get a calm reply with family and 112', () {
+    for (final text in [
+      "I'm scared",
+      'I am afraid',
+      'I am lost',
+      'where am I?',
+      'मुझे डर लग रहा है',
+      'আমার ভয় করছে',
+    ]) {
+      final r = helper.reply(text, ctx);
+      expect(r.intent, HelperIntent.scaredOrLost, reason: text);
+      expect(r.text, contains('112'), reason: text);
+      expect(r.text.toLowerCase(), contains('family'), reason: text);
+    }
+  });
+
+  test('nothing safety-related falls through to "did not understand"', () {
+    final unknown = helper.replyTo(HelperIntent.unknown, ctx).text;
+    for (final text in ['stop', "I'm tired", "I'm scared", 'I am lost']) {
+      expect(helper.reply(text, ctx).text, isNot(unknown), reason: text);
+    }
+  });
+
   test('intent labels match the server pattern', () {
     for (final i in HelperIntent.values) {
       expect(i.label, matches(RegExp(r'^[a-z][a-z0-9_]{0,39}$')));

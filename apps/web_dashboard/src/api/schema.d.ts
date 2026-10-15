@@ -433,7 +433,8 @@ export interface paths {
          * Record Consent
          * @description Append a consent decision.
          *
-         *     Withdrawing clinician sharing immediately blocks clinician access.
+         *     Withdrawing clinician sharing revokes every active clinician grant, so granting it
+         *     again later does not silently restore access for clinicians who were cut off.
          */
         post: operations["record_consent_api_v1_patients__patient_id__consents_post"];
         delete?: never;
@@ -454,6 +455,9 @@ export interface paths {
         /**
          * Revoke Devices
          * @description Sign out every paired patient device (e.g. a lost phone).
+         *
+         *     Unused pairing codes are cancelled too, so a code issued just before cannot be
+         *     redeemed afterwards.
          */
         post: operations["revoke_devices_api_v1_patients__patient_id__devices_revoke_post"];
         delete?: never;

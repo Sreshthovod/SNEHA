@@ -12,8 +12,14 @@ from app.core.config import get_settings
 def build_engine(database_url: str, *, echo: bool = False) -> Engine:
     is_sqlite = database_url.startswith("sqlite")
     connect_args = {"check_same_thread": False} if is_sqlite else {}
+    # hide_parameters keeps bound values (memory text, notes, emails) out of exception
+    # messages, which end up in logs.
     engine = create_engine(
-        database_url, echo=echo, pool_pre_ping=not is_sqlite, connect_args=connect_args
+        database_url,
+        echo=echo,
+        pool_pre_ping=not is_sqlite,
+        connect_args=connect_args,
+        hide_parameters=True,
     )
     if is_sqlite:
         # SQLite ignores foreign keys unless enabled per connection.

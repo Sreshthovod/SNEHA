@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
@@ -155,3 +156,52 @@ def test_patient_profile_validation(api: Api) -> None:
             "/api/v1/patients", json={**base, **bad}, headers=caregiver.headers
         )
         assert response.status_code == 422, bad
+
+
+@pytest.mark.parametrize("bad", ["Synthetic\x00note", "bell\x07", "esc\x1b[31m"])
+def test_control_characters_are_rejected_before_the_database(api: Api, bad: str) -> None:
+    # NUL cannot be stored in PostgreSQL; before this check it caused a 500 whose logged
+    # exception included the memory text.
+    owner = api.user()
+    pid = api.patient(owner)
+    response = api.client.post(
+        f"/api/v1/patients/{pid}/memories",
+        json={"kind": "person", "title": "Synthetic Ma", "description": bad},
+        headers=owner.headers,
+    )
+    assert response.status_code == 422
+    nested = api.client.post(
+        f"/api/v1/patients/{pid}/memories",
+        json={"kind": "person", "title": "Synthetic Ma", "tags": [bad]},
+        headers=owner.headers,
+    )
+    assert nested.status_code == 422
+
+
+def test_ordinary_whitespace_is_still_allowed(api: Api) -> None:
+    owner = api.user()
+    pid = api.patient(owner)
+    memory = api.memory(owner, pid, description="Line one\nLine two\tindented")
+    assert memory["description"] == "Line one\nLine two\tindented"
+
+
+def test_database_errors_never_log_bound_values(migrated_engine) -> None:
+    from sqlalchemy import text
+
+    from app.db.session import build_engine
+
+    engine = build_engine(migrated_engine.url.render_as_string(hide_password=False))
+    with pytest.raises(Exception) as caught, engine.connect() as conn:
+        conn.execute(text("SELECT * FROM no_such_table WHERE x = :v"), {"v": "SECRET-VALUE"})
+    assert "SECRET-VALUE" not in str(caught.value)
+    engine.dispose()
+
+
+def test_rate_limiter_forgets_idle_clients(monkeypatch) -> None:
+    from app.core import rate_limit
+
+    monkeypatch.setattr(rate_limit, "_MAX_KEYS", 3)
+    limiter = rate_limit.RateLimiter(limit=5, window_seconds=0.0)
+    for i in range(10):
+        limiter.check(f"client-{i}")
+    assert len(limiter._hits) <= 4

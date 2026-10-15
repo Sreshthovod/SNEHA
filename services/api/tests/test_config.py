@@ -77,3 +77,33 @@ def test_secrets_are_not_exposed_in_repr() -> None:
     settings = make(gemini_api_key="super-secret-value")
     assert settings.gemini_configured
     assert "super-secret-value" not in repr(settings)
+
+
+def test_production_rejects_sql_echo() -> None:
+    with pytest.raises(ValidationError, match="SNEHA_DATABASE_ECHO"):
+        make(
+            environment="production",
+            database_url=PG_URL,
+            secret_key=STRONG_SECRET,
+            cors_allowed_origins="https://dash.example.org",
+            database_echo=True,
+        )
+
+
+def test_production_hides_interactive_docs() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    settings = make(
+        environment="production",
+        database_url=PG_URL,
+        secret_key=STRONG_SECRET,
+        cors_allowed_origins="https://dash.example.org",
+    )
+    client = TestClient(create_app(settings))
+    for path in ("/docs", "/redoc", "/openapi.json"):
+        assert client.get(path).status_code == 404
+    assert make().environment is Environment.DEVELOPMENT
+    dev = TestClient(create_app(make()))
+    assert dev.get("/openapi.json").status_code == 200

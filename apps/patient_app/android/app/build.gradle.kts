@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -30,11 +32,33 @@ android {
         versionName = flutter.versionName
     }
 
+    // Release signing comes from android/key.properties (git-ignored), with
+    // storeFile, storePassword, keyAlias and keyPassword. Without it, release builds fall
+    // back to the debug key so `flutter run --release` works locally; such an APK must
+    // never be distributed.
+    val keystoreFile = rootProject.file("key.properties")
+    val keystore = Properties().apply {
+        if (keystoreFile.exists()) keystoreFile.inputStream().use { load(it) }
+    }
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            create("release") {
+                storeFile = file(keystore.getProperty("storeFile"))
+                storePassword = keystore.getProperty("storePassword")
+                keyAlias = keystore.getProperty("keyAlias")
+                keyPassword = keystore.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystoreFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn("SNEHA: android/key.properties not found; release build uses the DEBUG key.")
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

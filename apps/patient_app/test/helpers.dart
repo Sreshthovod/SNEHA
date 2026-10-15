@@ -74,6 +74,9 @@ class FakeServer {
   int pairStatus = 200;
   int authStatus = 200;
 
+  /// Bearer tokens sent to POST /auth/logout.
+  final List<String> logouts = [];
+
   // ----- Stage 7 endpoints (null handler → 404, like an older server) -----
 
   /// POST /activities/next → RecommendationOut body.
@@ -132,6 +135,10 @@ class FakeServer {
         'environment': 'test',
         'server_time': '2026-10-15T10:00:00Z',
       });
+    }
+    if (path == '/auth/logout') {
+      logouts.add(r.headers['Authorization'] ?? '');
+      return http.Response('', 204);
     }
     if (path == '/auth/device/pair') {
       if (pairStatus != 200) return _error(pairStatus, 'invalid_pairing_code');

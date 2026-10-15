@@ -41,6 +41,7 @@ def issue_session(
     *,
     kind: AuthSessionKind,
     device_name: str | None = None,
+    pairing_code_id: str | None = None,
 ) -> IssuedToken:
     ttl = (
         timedelta(days=settings.device_session_ttl_days)
@@ -53,6 +54,7 @@ def issue_session(
         token_hash=hash_token(token),
         kind=kind,
         device_name=device_name,
+        pairing_code_id=pairing_code_id,
         expires_at=utc_now() + ttl,
     )
     db.add(session)

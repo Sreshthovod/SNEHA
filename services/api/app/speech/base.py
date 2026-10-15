@@ -4,10 +4,19 @@ Providers never fabricate output: if a model is missing, a language is unsupport
 the audio is unusable, they raise a typed error that the API turns into a clear message.
 """
 
+import importlib.util
 from dataclasses import dataclass
 from typing import Protocol
 
 import numpy as np
+
+
+def importable(*modules: str) -> bool:
+    """True if every module can be found, without importing it (torch is slow to import)."""
+    try:
+        return all(importlib.util.find_spec(m) is not None for m in modules)
+    except (ImportError, ValueError):
+        return False
 
 
 class SpeechError(Exception):

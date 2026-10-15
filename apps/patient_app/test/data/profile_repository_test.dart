@@ -39,6 +39,30 @@ void main() {
     expect(h.services.controller.activeProfile, isNull);
   });
 
+  test('removing a profile signs the phone out on the server', () async {
+    final h = await Harness.create();
+    addTearDown(h.dispose);
+    await h.pairAndOnboard();
+
+    await h.services.controller.removeProfile(patientId);
+
+    expect(h.server.logouts, ['Bearer synthetic-token']);
+    expect(h.tokens.tokens, isEmpty);
+  });
+
+  test('removing a profile still works offline', () async {
+    final h = await Harness.create();
+    addTearDown(h.dispose);
+    await h.pairAndOnboard();
+    h.server.online = false;
+
+    await h.services.controller.removeProfile(patientId);
+
+    expect(h.server.logouts, isEmpty);
+    expect(await h.services.profiles.list(), isEmpty);
+    expect(h.tokens.tokens, isEmpty);
+  });
+
   test('media cache only accepts UUID identifiers (no path traversal)', () {
     final cache = MediaCache(Directory.systemTemp);
     expect(() => cache.pathFor('../../etc', fileId), throwsArgumentError);

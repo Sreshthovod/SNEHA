@@ -101,6 +101,17 @@ class SnehaApiClient {
     return _parse(() => TokenResponse.fromJson(json), 'pairing');
   }
 
+  /// POST /auth/logout: end this device session on the server (204, no body).
+  Future<void> logout(String token) async {
+    final url = _url('/auth/logout');
+    final response = await _request(
+      () => _http.post(url, headers: _headers(token)).timeout(timeout),
+    );
+    // 401 means the session had already ended, which is the goal anyway.
+    if (response.statusCode == 204 || response.statusCode == 401) return;
+    throw _errorFrom(response, '/auth/logout');
+  }
+
   Future<UserOut> getMe(String token) async {
     final json = await _send('GET', '/auth/me', token: token);
     return _parse(() => UserOut.fromJson(json), 'me');

@@ -4,6 +4,9 @@ import '../l10n/strings.dart';
 /// Coarse intent labels. These (not the words) are the only conversation data
 /// ever recorded, and they match the server's `^[a-z][a-z0-9_]*$` rule.
 enum HelperIntent {
+  stop('request_stop'),
+  tired('express_fatigue'),
+  scaredOrLost('scared_or_lost'),
   greeting,
   askTime('ask_time'),
   askDate('ask_date'),
@@ -43,11 +46,69 @@ class HelperReply {
 /// Deterministic, on-device helper: keyword rules only, no AI model and no
 /// network. It never gives medical advice; health-related messages always get
 /// the same safety reply pointing to family and the 112 emergency number.
+///
+/// An explicit stop request beats every rule except feeling unwell, scared or
+/// lost (whose reply also tells the person to call family or 112), and is never
+/// cancelled by a negation ("No, stop" stops). The reply ends the conversation politely; this
+/// screen is not part of an activity session, so there is nothing else to end.
 class OfflineHelper {
   OfflineHelper(this.strings);
 
   final AppStrings strings;
   int _memoryCursor = 0;
+
+  // English + DRAFT hi/bn/as (not yet reviewed by native speakers), mirroring
+  // the server's keyword lists.
+  static const _stopWords = [
+    'stop',
+    'enough',
+    'no more',
+    'quit',
+    'i want to stop',
+    "don't want to do this",
+    'do this anymore',
+    'रुको',
+    'रुकिए',
+    'बस करो',
+    'बस', // whole word only (see _indicWholeWords)
+    'बंद',
+    'থামো',
+    'থামুন',
+    'বন্ধ',
+    'বন্ধ করুন',
+    'ৰখা',
+    'ৰখক',
+    'বন্ধ কৰক',
+  ];
+
+  // Short Indic words that would otherwise match inside longer words
+  // ("बस" is in "बस्ती").
+  static const _indicWholeWords = {'बस'};
+
+  static const _tiredWords = [
+    'tired',
+    'sleepy',
+    'exhausted',
+    'weary',
+    'need rest',
+    'need a rest',
+    'want to rest',
+    'थक',
+    'नींद',
+    'ভাগৰ',
+    'টোপনি',
+    'ক্লান্ত',
+  ];
+
+  // "No, I'm tired" is still tired: only real negations count, and in
+  // hi/bn/as the negation follows the word ("मैं थका नहीं हूँ"). DRAFT.
+  static const _negations = {'not', 'never', 'nahi'};
+  static const _indicNegations = {'नहीं', 'नही', 'না', 'নই', 'নহয়', 'নাই'};
+
+  static const _safety = {
+    HelperIntent.feelingUnwell,
+    HelperIntent.scaredOrLost,
+  };
 
   // Order matters: safety first, then the most specific intents.
   static const _rules = <(HelperIntent, List<String>)>[
@@ -74,6 +135,28 @@ class OfflineHelper {
         'বেমাৰ',
       ],
     ),
+    (
+      HelperIntent.scaredOrLost,
+      [
+        'scared',
+        'afraid',
+        'frightened',
+        'fear',
+        'panic',
+        'i am lost',
+        "i'm lost",
+        'am lost',
+        'got lost',
+        'where am i',
+        'डर',
+        'खो गया',
+        'खो गई',
+        'ভয়',
+        'হেৰাই',
+        'হারিয়ে',
+      ],
+    ),
+    (HelperIntent.tired, _tiredWords),
     (
       HelperIntent.contactFamily,
       [
@@ -107,18 +190,55 @@ class OfflineHelper {
   ];
 
   HelperIntent classify(String text) {
-    final t = ' ${text.toLowerCase().trim()} ';
-    for (final (intent, words) in _rules) {
-      for (final w in words) {
-        final isAscii = w.codeUnits.every((c) => c < 128);
-        // Whole-word match for short ASCII words ("hi" must not match "this").
-        final hit = isAscii && !w.contains(' ')
-            ? RegExp('\\b${RegExp.escape(w)}\\b').hasMatch(t)
-            : t.contains(w);
-        if (hit) return intent;
+    final t = ' ${_fold(text.toLowerCase().trim().replaceAll('’', "'"))} ';
+    final words = t.split(_separators).where((w) => w.isNotEmpty).toList();
+    // Feeling unwell, scared or lost come first, so "Please stop, I feel dizzy"
+    // still gets the call-family/112 reply (the server does the same). Then stop,
+    // never negated: over-triggering stop is the safe side.
+    for (final (intent, keywords) in _rules.where(
+      (r) => _safety.contains(r.$1),
+    )) {
+      if (keywords.any((w) => _hit(t, words, w))) return intent;
+    }
+    if (_stopWords.any((w) => _hit(t, words, w))) return HelperIntent.stop;
+    for (final (intent, keywords) in _rules) {
+      for (final w in keywords) {
+        if (!_hit(t, words, w)) continue;
+        if (intent == HelperIntent.tired && _negated(t, words, w)) continue;
+        return intent;
       }
     }
     return HelperIntent.unknown;
+  }
+
+  static final _separators = RegExp(r"[\s,.!?।;:]+");
+
+  // Bengali/Assamese "য়" can be typed as one code point or as য + nukta.
+  static String _fold(String s) => s.replaceAll('\u09DF', '\u09AF\u09BC');
+
+  static bool _isAscii(String w) => w.codeUnits.every((c) => c < 128);
+
+  static bool _hit(String t, List<String> words, String w) {
+    w = _fold(w);
+    if (_indicWholeWords.contains(w)) return words.contains(w);
+    // Whole-word match for short ASCII words ("hi" must not match "this").
+    return _isAscii(w) && !w.contains(' ')
+        ? RegExp('\\b${RegExp.escape(w)}\\b').hasMatch(t)
+        : t.contains(w);
+  }
+
+  static bool _negated(String t, List<String> words, String w) {
+    w = _fold(w);
+    if (_isAscii(w)) {
+      final i = words.indexWhere((x) => x.contains(w.split(' ').first));
+      if (i < 0) return false;
+      final before = words.sublist(i < 2 ? 0 : i - 2, i);
+      return before.any((b) => _negations.contains(b) || b.endsWith("n't"));
+    }
+    final i = words.indexWhere((x) => x.contains(w));
+    if (i < 0) return false;
+    final after = words.skip(i + 1).take(2);
+    return after.any((a) => _indicNegations.map(_fold).contains(a));
   }
 
   HelperReply reply(String text, HelperContext ctx) =>
@@ -127,6 +247,9 @@ class OfflineHelper {
   HelperReply replyTo(HelperIntent intent, HelperContext ctx) {
     final s = strings;
     final text = switch (intent) {
+      HelperIntent.stop => s.t('talk_reply_stop'),
+      HelperIntent.tired => s.t('talk_reply_tired'),
+      HelperIntent.scaredOrLost => s.t('talk_reply_scared'),
       HelperIntent.greeting => s.t('talk_reply_greeting', {'name': ctx.name}),
       HelperIntent.askTime => s.t('talk_reply_time', {
         'time': formatTime(ctx.now),

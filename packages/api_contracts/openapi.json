@@ -7828,7 +7828,7 @@
         ]
       },
       "post": {
-        "description": "Append a consent decision.\n\nWithdrawing clinician sharing immediately blocks clinician access.",
+        "description": "Append a consent decision.\n\nWithdrawing clinician sharing revokes every active clinician grant, so granting it\nagain later does not silently restore access for clinicians who were cut off.",
         "operationId": "record_consent_api_v1_patients__patient_id__consents_post",
         "parameters": [
           {
@@ -7919,7 +7919,7 @@
     },
     "/api/v1/patients/{patient_id}/devices/revoke": {
       "post": {
-        "description": "Sign out every paired patient device (e.g. a lost phone).",
+        "description": "Sign out every paired patient device (e.g. a lost phone).\n\nUnused pairing codes are cancelled too, so a code issued just before cannot be\nredeemed afterwards.",
         "operationId": "revoke_devices_api_v1_patients__patient_id__devices_revoke_post",
         "parameters": [
           {

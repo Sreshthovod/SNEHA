@@ -23,19 +23,22 @@
 |---|---|---|---|---|
 | Activity selection and difficulty | Deterministic rules engine ([spec](../packages/shared_docs/personalization-rules.md)) | n/a | Server **and** phone (Dart port, parity-tested) | ✅ |
 | Memory retrieval | Tag, entity and relationship matching over **approved** memories | n/a | Server; phone uses its synced approved cache | ✅ (embeddings: optional future) |
-| Conversation understanding | Gemini (optional) → local LLM (optional) → **deterministic** | Deterministic, always | Server; phone has an offline helper | ✅ |
+| Conversation understanding | **One** configured provider: deterministic (default), Gemini or a local LLM | Deterministic, always | Server; phone has an offline helper | ✅ |
 | Speech recognition | faster-whisper (Whisper, CTranslate2) | Touch input | Server | ✅ verified with a real model |
 | Speech synthesis | Phone system TTS; server Indic Parler-TTS (optional) | On-screen text | Phone / server | Phone ✅ · server: integrated, not run here |
 
 ## Conversation (`services/api/app/conversation/`)
 
-**Chain:**
-1. Gemini, if `SNEHA_GEMINI_API_KEY` is set and the patient's `cloud_ai` consent is
-   granted.
-2. Local OpenAI-compatible model, if `SNEHA_LOCAL_LLM_BASE_URL` is set.
-3. Deterministic keyword engine. It always works and makes no network calls.
+**Provider selection:** `SNEHA_CONVERSATION_PROVIDER` picks exactly one provider per
+request; there is no chain between Gemini and the local model.
+- `deterministic` (default): the keyword engine. It always works and makes no network
+  calls.
+- `gemini`: used only if `SNEHA_GEMINI_API_KEY` is set and the patient's `cloud_ai` consent
+  is granted.
+- `local`: an OpenAI-compatible model, used only if `SNEHA_LOCAL_LLM_BASE_URL` is set.
 
-Any failure falls back to the deterministic engine with a reason code:
+If the configured model provider is unavailable or fails, the request goes straight to the
+deterministic engine (a Gemini failure never tries the local model) with a reason code:
 `not_configured`, `cloud_ai_consent_not_granted`, `timeout`, `network_unavailable`,
 `invalid_credentials`, `quota_exhausted`, `safety_blocked`, `malformed_output`,
 `schema_invalid_output`, `empty_output`, `provider_error`.
@@ -56,8 +59,9 @@ Any failure falls back to the deterministic engine with a reason code:
   marked uncertain.
 - Memory candidates are returned with `requires_approval: true` and never saved.
 - Diagnostic or decline wording is filtered out.
-- Distress, fatigue and stop flags are OR-ed with the deterministic detector, so a model
-  cannot hide them.
+- Distress, fatigue and stop are OR-ed across the model's flags, the model's intents and
+  the deterministic detector, so a model can only add these signals, never hide them.
+- Negation never cancels a stop request ("No, stop" stops).
 - The patient-facing reply comes only from server templates plus stored titles, never from
   model text.
 - Activity suggestions come only from the personalization engine.
@@ -96,6 +100,13 @@ native-speaker review**.
   GPU.
 - The provider is integrated with lazy loading and honest errors, but **has not been run
   with real weights on this machine**.
+- Everything loads with `local_files_only=True`. The voice-description tokenizer (from the
+  model's text-encoder repo) is copied to `<SNEHA_TTS_MODEL_PATH>/description_tokenizer` by
+  the download script; without it (or a local Hugging Face cache copy) synthesis returns
+  `503 model_missing` instead of downloading.
+- `GET /api/v1/speech/status` reports a provider as available only when its Python packages
+  are installed **and** its weights are present. Weights that fail to load return
+  `503 speech_unavailable` without internal details.
 - On the phone, read-aloud uses Android's system TTS and checks voice availability per
   language. Without a voice, text stays on screen.
 

@@ -552,10 +552,17 @@ def review_flags(
 
     # --- tiredness signals (context) ------------------------------------------------
     signal_days: list[date] = []
+    tired_sessions: set[str] = set()
     if len(period_results):
-        signal_days += list(period_results[period_results["fatigue_reported"].astype(bool)]["day"])
+        tired = period_results[period_results["fatigue_reported"].astype(bool)]
+        signal_days += list(tired["day"])
+        tired_sessions = set(tired["session_id"])
     if len(sessions):
-        signal_days += list(sessions[sessions["end_reason"] == "fatigue_detected"]["day"])
+        # One "I'm tired" press marks the result AND ends the session: count it once.
+        ended = sessions[
+            (sessions["end_reason"] == "fatigue_detected") & ~sessions["id"].isin(tired_sessions)
+        ]
+        signal_days += list(ended["day"])
     fatigue_obs = (
         observations[observations["category"] == "fatigue"] if len(observations) else observations
     )

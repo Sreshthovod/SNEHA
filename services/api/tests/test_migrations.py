@@ -39,3 +39,37 @@ def test_upgrade_and_downgrade_on_postgres() -> None:
     config = _config(url)
     command.upgrade(config, "head")
     command.downgrade(config, "base")
+
+
+def _schema_drift(url: str) -> list:
+    from alembic.autogenerate import compare_metadata
+    from alembic.runtime.migration import MigrationContext
+
+    import app.models  # noqa: F401  (registers every table)
+    from app.db.base import Base
+
+    command.upgrade(_config(url), "head")
+    engine = build_engine(url)
+    try:
+        with engine.connect() as conn:
+            context = MigrationContext.configure(conn, opts={"compare_type": False})
+            return compare_metadata(context, Base.metadata)
+    finally:
+        engine.dispose()
+
+
+def test_migrations_match_the_models_on_sqlite(database_url: str) -> None:
+    assert _schema_drift(database_url) == []
+
+
+@pytest.mark.postgres
+@pytest.mark.skipif(
+    not os.environ.get("SNEHA_TEST_POSTGRES_URL"),
+    reason="Set SNEHA_TEST_POSTGRES_URL to compare migrations with models on PostgreSQL",
+)
+def test_migrations_match_the_models_on_postgres() -> None:
+    url = os.environ["SNEHA_TEST_POSTGRES_URL"].replace("postgresql://", "postgresql+psycopg://", 1)
+    try:
+        assert _schema_drift(url) == []
+    finally:
+        command.downgrade(_config(url), "base")

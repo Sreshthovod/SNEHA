@@ -36,6 +36,10 @@ class AuthSession(IdMixin, TimestampMixin, Base):
         str_enum(AuthSessionKind, "auth_session_kind"), nullable=False
     )
     device_name: Mapped[str | None] = mapped_column(String(80))
+    # The code a patient device was paired with; it records which caregiver let it in.
+    pairing_code_id: Mapped[str | None] = mapped_column(
+        ForeignKey("device_pairing_codes.id", ondelete="SET NULL"), index=True
+    )
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     last_used_at: Mapped[datetime | None] = mapped_column(UTCDateTime)

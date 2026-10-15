@@ -1,7 +1,15 @@
+import re
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict, StringConstraints
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    StringConstraints,
+    model_validator,
+)
 
 UUID_PATTERN = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 
@@ -20,10 +28,32 @@ def _to_utc(value: datetime) -> datetime:
 UtcDatetime = Annotated[AwareDatetime, AfterValidator(_to_utc)]
 
 
+# C0 control characters other than tab, newline and carriage return, plus DEL. NUL in
+# particular cannot be stored in PostgreSQL text columns.
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _has_control_chars(value: Any) -> bool:
+    if isinstance(value, str):
+        return _CONTROL_CHARS.search(value) is not None
+    if isinstance(value, dict):
+        return any(_has_control_chars(k) or _has_control_chars(v) for k, v in value.items())
+    if isinstance(value, list | tuple):
+        return any(_has_control_chars(v) for v in value)
+    return False
+
+
 class RequestModel(BaseModel):
     """Rejects unknown fields so typos and mass-assignment attempts fail loudly."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_control_characters(cls, data: Any) -> Any:
+        if _has_control_chars(data):
+            raise ValueError("Text must not contain control characters")
+        return data
 
 
 class ResponseModel(BaseModel):

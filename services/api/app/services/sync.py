@@ -263,7 +263,14 @@ def _payload(db: Session, change: SyncChange) -> dict[str, Any] | None:
         return None
     if isinstance(row, MemoryItem) and row.status is not MemoryStatus.APPROVED:
         return None
+    if isinstance(row, MemoryRelationship) and not _both_approved(db, row):
+        return None
     return schema.model_validate(row).model_dump(mode="json")
+
+
+def _both_approved(db: Session, link: MemoryRelationship) -> bool:
+    ends = [db.get(MemoryItem, link.from_memory_id), db.get(MemoryItem, link.to_memory_id)]
+    return all(m is not None and m.status is MemoryStatus.APPROVED for m in ends)
 
 
 def pull(

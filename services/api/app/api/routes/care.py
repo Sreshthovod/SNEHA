@@ -283,6 +283,9 @@ def delete_observation(
         raise not_found("Observation")
     if obs.author_id != principal.id and not access.can(Permission.MANAGE_PATIENT):
         raise forbidden("Only the author or a managing caregiver can delete this observation.")
+    if obs.status is not ObservationStatus.OPEN and not access.can(Permission.MANAGE_PATIENT):
+        # Once reviewed, the note and its history belong to the care record.
+        raise forbidden("Only a managing caregiver can delete a reviewed observation.")
     db.delete(obs)
     audit.record(
         db,

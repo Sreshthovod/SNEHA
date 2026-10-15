@@ -26,7 +26,7 @@ class AppServices {
   AppServices({
     required this.local,
     required this.api,
-    required TokenStore tokens,
+    required this.tokens,
     required MediaCache media,
     this.clock = systemClock,
     Random? random,
@@ -64,6 +64,7 @@ class AppServices {
 
   final LocalDatabase local;
   final SnehaApiClient api;
+  final TokenStore tokens;
   final Clock clock;
   final Random random;
   final SpeechOutput speechOutput;

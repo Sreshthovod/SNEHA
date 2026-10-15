@@ -215,6 +215,13 @@ class AppStrings {
         'Please ask someone near you to call your family. You can show them this phone.',
     'talk_reply_unwell':
         "I'm sorry you don't feel well. Please tell someone near you or call your family. In an emergency, call 112.",
+    // Mirror the server's reviewed English templates (conversation/templates.py).
+    'talk_reply_stop':
+        'All right, we can stop now. Thank you for spending time with me.',
+    'talk_reply_tired':
+        "Let's take a little rest. We can do something gentle later.",
+    'talk_reply_scared':
+        "I'm sorry you feel this way. Please call a family member now. If it is an emergency, call 112.",
     'talk_reply_thanks': "You're welcome.",
     'talk_reply_unknown':
         "I'm a simple helper and didn't understand. Try one of the buttons below.",
@@ -415,6 +422,11 @@ class AppStrings {
     'settings_text_size': 'अक्षरों का आकार',
     'activities_title': 'कोई गतिविधि चुनें',
     'profiles_title': 'SNEHA कौन इस्तेमाल कर रहा है?',
+    'talk_reply_stop':
+        'ठीक है, अब हम रुक सकते हैं। मेरे साथ समय बिताने के लिए धन्यवाद।',
+    'talk_reply_tired': 'चलिए थोड़ा आराम करते हैं।',
+    'talk_reply_scared':
+        'मुझे दुख है कि आप ऐसा महसूस कर रहे हैं। कृपया अभी परिवार के किसी सदस्य को फ़ोन करें। आपातकाल में 112 पर कॉल करें।',
   };
 
   // DRAFT — needs native-speaker review.
@@ -443,6 +455,10 @@ class AppStrings {
     'settings_text_size': 'আখৰৰ আকাৰ',
     'activities_title': 'এটা কাৰ্যকলাপ বাছক',
     'profiles_title': 'SNEHA কোনে ব্যৱহাৰ কৰিছে?',
+    'talk_reply_stop': 'ঠিক আছে, এতিয়া আমি ৰখিব পাৰো।',
+    'talk_reply_tired': 'অলপ জিৰণি লওঁ আহক।',
+    'talk_reply_scared':
+        'আপুনি এনে অনুভৱ কৰিছে বুলি মই দুখিত। অনুগ্ৰহ কৰি এতিয়াই পৰিয়ালৰ কাৰোবাক ফোন কৰক। জৰুৰীকালীন অৱস্থাত 112 ত ফোন কৰক।',
   };
 
   // DRAFT — needs native-speaker review.
@@ -471,6 +487,10 @@ class AppStrings {
     'settings_text_size': 'লেখার আকার',
     'activities_title': 'একটি কার্যকলাপ বেছে নিন',
     'profiles_title': 'SNEHA কে ব্যবহার করছেন?',
+    'talk_reply_stop': 'ঠিক আছে, এখন আমরা থামতে পারি।',
+    'talk_reply_tired': 'চলুন একটু বিশ্রাম নিই।',
+    'talk_reply_scared':
+        'আপনার এমন লাগছে শুনে আমি দুঃখিত। দয়া করে এখনই পরিবারের কাউকে ফোন করুন। জরুরি অবস্থায় 112-এ ফোন করুন।',
   };
 
   static const _tables = <String, Map<String, String>>{

@@ -15,6 +15,7 @@ from app.schemas.care import FileOut
 from app.schemas.common import ErrorResponse
 from app.services import audit
 from app.services.access import PatientAccess, Permission, authorize
+from app.services.activities import require_data_consent
 from app.services.files import FileStore
 
 router = APIRouter(tags=["files"])
@@ -46,6 +47,7 @@ async def upload_media(
     access: PatientAccess = patient_access(Permission.UPLOAD_MEDIA),
 ) -> StoredFile:
     """Upload a photo for the Memory Bank. Type is detected from the bytes, not the filename."""
+    require_data_consent(db, access.patient.id)
     store = FileStore(settings.media_root)
     storage_key, content_type, size, sha256 = await store.save_upload(
         file, settings.max_upload_bytes

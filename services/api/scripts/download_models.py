@@ -37,13 +37,17 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def download(repo: str, target: Path, revision: str | None) -> Path:
+def download(
+    repo: str, target: Path, revision: str | None, allow_patterns: list[str] | None = None
+) -> Path:
     try:
         from huggingface_hub import HfApi, snapshot_download
     except ImportError:
         sys.exit("huggingface_hub is not installed (it comes with the `speech` dependency group).")
     info = HfApi().model_info(repo, revision=revision)
-    path = Path(snapshot_download(repo, revision=info.sha, local_dir=target))
+    path = Path(
+        snapshot_download(repo, revision=info.sha, local_dir=target, allow_patterns=allow_patterns)
+    )
     manifest = {
         "repo": repo,
         "revision": info.sha,
@@ -75,6 +79,16 @@ def main() -> None:
         print(f"Downloaded {repo} to {path}\nSet: SNEHA_ASR_MODEL_PATH={path}")
     else:
         path = download(TTS_REPO, MODELS_DIR / "tts" / "indic-parler-tts", args.revision)
+        # The voice-description tokenizer lives in another repo. Keep a local copy (tokenizer
+        # files only) so the server never fetches it at runtime.
+        config = json.loads((path / "config.json").read_text())
+        desc_repo = config["text_encoder"]["_name_or_path"]
+        download(
+            desc_repo,
+            path / "description_tokenizer",
+            None,
+            allow_patterns=["*.json", "*.model", "*.txt"],
+        )
         print(f"Downloaded {TTS_REPO} to {path}\nSet: SNEHA_TTS_MODEL_PATH={path}")
 
 

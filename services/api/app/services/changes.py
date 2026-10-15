@@ -1,11 +1,11 @@
 """Append entries to the outbound sync change log (see models/sync.py)."""
 
-from sqlalchemy import text
+from sqlalchemy import or_, select, text
 from sqlalchemy.orm import Session
 
 from app.core.time import utc_now
 from app.models.enums import MemoryStatus, SyncEntity, SyncOperation
-from app.models.memories import MemoryItem
+from app.models.memories import MemoryItem, MemoryRelationship
 from app.models.sync import SyncChange
 
 # Arbitrary constant identifying the change-log lock.
@@ -53,3 +53,21 @@ def log_memory_change(db: Session, memory: MemoryItem, *, deleted: bool = False)
         SyncOperation.UPSERT if visible else SyncOperation.DELETE,
         memory.patient_id,
     )
+    # A link is only visible while both of its memories are approved, so re-send links
+    # whenever one end changes; the pull payload decides whether each is an upsert.
+    links = db.scalars(
+        select(MemoryRelationship.id).where(
+            or_(
+                MemoryRelationship.from_memory_id == memory.id,
+                MemoryRelationship.to_memory_id == memory.id,
+            )
+        )
+    ).all()
+    for link_id in links:
+        log_change(
+            db,
+            SyncEntity.MEMORY_RELATIONSHIP,
+            link_id,
+            SyncOperation.DELETE if deleted else SyncOperation.UPSERT,
+            memory.patient_id,
+        )

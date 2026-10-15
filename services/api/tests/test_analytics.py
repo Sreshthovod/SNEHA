@@ -198,6 +198,23 @@ def test_low_enjoyment_and_repeated_tiredness(api: Api, family) -> None:
     assert s.totals.interrupted_results == 0
 
 
+def test_one_tired_press_counts_once(api: Api, family) -> None:
+    # The app marks the result AND ends the session as fatigue_detected for one press.
+    _, pid = family
+    two_days = [PERIOD_START.replace(day=d) for d in (22, 24)]
+    seed(
+        api.db,
+        pid,
+        [R(d, fatigue=True, at=time(15)) for d in two_days],
+        end_reason="fatigue_detected",
+    )
+    assert "REPEATED_TIREDNESS" not in flag_ids(summary(api, pid))
+    # A session ended for tiredness with no tired result is still its own signal.
+    seed(api.db, pid, [R(PERIOD_START.replace(day=26))], end_reason="fatigue_detected")
+    tired = next(f for f in summary(api, pid).review_flags if f.rule_id == "REPEATED_TIREDNESS")
+    assert tired.numbers["signals"] == 3 and tired.numbers["days"] == 3
+
+
 def test_preferences_rank_enjoyed_first(api: Api, family) -> None:
     _, pid = family
     seed(

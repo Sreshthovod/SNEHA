@@ -9,7 +9,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, Response, status
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, true
 
 from app.api.deps import DbSessionDep, PrincipalDep, SettingsDep, patient_access
 from app.core.errors import AppError, conflict, not_found
@@ -59,7 +59,9 @@ def _get_memory(db, access: PatientAccess, memory_id: str) -> MemoryItem:
     return memory
 
 
-def _check_media(db, patient_id: str, media_file_id: str | None) -> None:
+def _check_media(
+    db, patient_id: str, media_file_id: str | None, *, memory_id: str | None = None
+) -> None:
     if media_file_id is None:
         return
     file = db.get(StoredFile, media_file_id)
@@ -72,6 +74,15 @@ def _check_media(db, patient_id: str, media_file_id: str | None) -> None:
         raise AppError(
             422, "invalid_media", "media_file_id does not refer to this patient's media."
         )
+    # A photo belongs to one memory: deleting that memory deletes the photo.
+    other = db.scalar(
+        select(MemoryItem.id).where(
+            MemoryItem.media_file_id == media_file_id,
+            MemoryItem.id != memory_id if memory_id else true(),
+        )
+    )
+    if other is not None:
+        raise AppError(422, "invalid_media", "This photo is already used by another memory.")
 
 
 def _require_version(memory: MemoryItem, expected: int) -> None:
@@ -161,6 +172,7 @@ def correct_memory(
     principal: PrincipalDep,
     db: DbSessionDep,
     request: Request,
+    settings: SettingsDep,
     access: PatientAccess = patient_access(Permission.MANAGE_MEMORIES),
 ) -> MemoryItem:
     memory = _get_memory(db, access, memory_id)
@@ -169,8 +181,16 @@ def correct_memory(
     for required in ("kind", "title", "tags"):
         if required in changes and changes[required] is None:
             raise AppError(422, "validation_error", f"{required} cannot be null.")
+    replaced = None
     if "media_file_id" in changes:
-        _check_media(db, access.patient.id, changes["media_file_id"])
+        _check_media(db, access.patient.id, changes["media_file_id"], memory_id=memory.id)
+        if memory.media_file_id and memory.media_file_id != changes["media_file_id"]:
+            # A replaced or removed photo is erased, not just unlinked.
+            replaced = db.get(StoredFile, memory.media_file_id)
+            if replaced is not None and replaced.deleted_at is None:
+                replaced.deleted_at = utc_now()
+            else:
+                replaced = None
     for field, value in changes.items():
         setattr(memory, field, value)
     memory.version += 1
@@ -188,6 +208,8 @@ def correct_memory(
         details={"version": memory.version},
     )
     db.commit()
+    if replaced is not None:
+        FileStore(settings.media_root).delete(replaced.storage_key)
     return memory
 
 

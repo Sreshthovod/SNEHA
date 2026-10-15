@@ -10,6 +10,7 @@ before use with patients.
 """
 
 import re
+import unicodedata
 
 from app.conversation.context import PatientContext, key_words, words
 from app.conversation.extraction import (
@@ -122,11 +123,21 @@ KEYWORDS: dict[Intent, list[str]] = {
         "no more",
         "i want to stop",
         "quit",
+        "do this anymore",
+        "don't want to do this",
+        "don't want to continue",
         "रुको",
+        "रुकिए",
+        "बस करो",
+        "बस",  # whole word only, see _WHOLE_WORD
         "बंद",
         "বন্ধ",
         "থামো",
+        "থামুন",
+        "বন্ধ করুন",
         "ৰখা",
+        "ৰখক",
+        "বন্ধ কৰক",
     ],
     Intent.TALK_ABOUT_MEMORY: [
         "remember",
@@ -167,7 +178,14 @@ RELATIONSHIP_WORDS = [
     "पिता",  # DRAFT
 ]
 
-_NEGATIONS = {"not", "no", "never", "isn't", "aren't", "don't", "didn't", "am't", "nahi", "नहीं"}
+# "no" is deliberately absent: "No, I'm tired" is still tired.
+_NEGATIONS = {"not", "never", "isn't", "aren't", "don't", "didn't", "am't", "nahi"}
+# DRAFT hi/bn/as negations. They follow the word they negate ("मैं थका नहीं हूँ").
+_INDIC_NEGATIONS = {unicodedata.normalize("NFC", w) for w in ("नहीं", "नही", "না", "নই", "নহয়", "নাই")}
+_INDIC_NEGATABLE = {Intent.EXPRESS_FATIGUE}  # Indic distress stays un-negated (safe side)
+# Indic keywords too short to match as substrings ("बस" is inside "बस्ती").
+_WHOLE_WORD = {"बस"}
+_PUNCT = ".,!?।;:\"'()"
 _CANDIDATE_CUES = ("remember when", "used to", "when i was", "long ago")
 _SENTENCE = re.compile(r"[^.!?।\n]+")
 
@@ -176,14 +194,37 @@ def _normalise(text: str) -> str:
     return " ".join(text.lower().replace("’", "'").split())
 
 
-def _has(text: str, tokens: list[str], keyword: str) -> bool:
+def _indic_has(text: str, keyword: str, negatable: bool) -> bool:
+    # NFC so "য়" typed as one code point or as য + nukta compares equal.
+    text, keyword = unicodedata.normalize("NFC", text), unicodedata.normalize("NFC", keyword)
+    if keyword in _WHOLE_WORD:
+        return keyword in (w.strip(_PUNCT) for w in text.split())
+    start = text.find(keyword)
+    while start != -1:
+        if not negatable:
+            return True
+        rest = text[start + len(keyword) :]
+        after = rest.split()
+        if rest and not rest[0].isspace():
+            after = after[1:]  # the rest of the inflected word itself
+        if not any(w.strip(_PUNCT) in _INDIC_NEGATIONS for w in after[:2]):
+            return True
+        start = text.find(keyword, start + 1)
+    return False
+
+
+def _has(text: str, tokens: list[str], keyword: str, negatable: bool | None = None) -> bool:
+    """negatable=False (stop) ignores negation: over-triggering stop is the safe side.
+    By default only English keywords are negatable."""
+    if negatable is None:
+        negatable = keyword.isascii()
     if not keyword.isascii():
-        return keyword in text  # Indic scripts: substring (inflections share a stem)
+        return _indic_has(text, keyword, negatable)  # substring: inflections share a stem
     kw = keyword.split()
     for i in range(len(tokens) - len(kw) + 1):
         if tokens[i : i + len(kw)] == kw:
             before = tokens[max(0, i - 2) : i]
-            if any(b in _NEGATIONS or b.endswith("n't") for b in before):
+            if negatable and any(b in _NEGATIONS or b.endswith("n't") for b in before):
                 continue  # "I'm not tired"
             return True
     return False
@@ -196,7 +237,16 @@ def _tokens(text: str) -> list[str]:
 def detect_intents(text: str) -> list[Intent]:
     norm = _normalise(text)
     tokens = _tokens(norm)
-    found = [intent for intent, kws in KEYWORDS.items() if any(_has(norm, tokens, k) for k in kws)]
+    found = []
+    for intent, kws in KEYWORDS.items():
+        if intent is Intent.REQUEST_STOP:
+            negatable = False  # negation never cancels a stop request
+        elif intent in _INDIC_NEGATABLE:
+            negatable = True
+        else:
+            negatable = None
+        if any(_has(norm, tokens, k, negatable) for k in kws):
+            found.append(intent)
     # "I don't feel well" must not be read as negated distress.
     return found
 

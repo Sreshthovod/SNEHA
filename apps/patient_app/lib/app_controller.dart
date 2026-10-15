@@ -99,6 +99,16 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> removeProfile(String patientId) async {
+    // Sign this phone out on the server first so the token stops working there too.
+    // Best effort: removing the profile must also work offline.
+    final token = await _services.tokens.read(patientId);
+    if (token != null) {
+      try {
+        await _services.api.logout(token);
+      } on Object {
+        // Offline or server error: the session still expires on its own.
+      }
+    }
     await _services.profiles.remove(patientId);
     if (_settings.activePatientId == patientId) {
       await selectProfile(null);

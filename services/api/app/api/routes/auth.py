@@ -1,7 +1,7 @@
 """Registration, login, logout and patient-device pairing."""
 
 from fastapi import APIRouter, Request, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.api.deps import DbSessionDep, PrincipalDep, SettingsDep
 from app.core.errors import AppError, conflict
@@ -124,7 +124,24 @@ def pair_device(
             DevicePairingCode.code_hash == hash_pairing_code(body.code, settings.pairing_secret)
         )
     )
-    if code is None or code.used_at is not None or code.expires_at <= now:
+    # Claim the code with one conditional UPDATE so two concurrent requests cannot both
+    # redeem it: only the request whose UPDATE matched a row may continue.
+    claimed = (
+        code is not None
+        and db.execute(
+            update(DevicePairingCode)
+            .where(
+                DevicePairingCode.id == code.id,
+                DevicePairingCode.used_at.is_(None),
+                DevicePairingCode.expires_at > now,
+            )
+            .values(used_at=now)
+            .execution_options(synchronize_session=False)
+        ).rowcount
+        == 1
+    )
+    if not claimed:
+        db.rollback()
         audit.record(
             db,
             "auth.device_pair",
@@ -150,7 +167,12 @@ def pair_device(
         patient.user_id = user.id
 
     issued = issue_session(
-        db, user, settings, kind=AuthSessionKind.DEVICE, device_name=body.device_name
+        db,
+        user,
+        settings,
+        kind=AuthSessionKind.DEVICE,
+        device_name=body.device_name,
+        pairing_code_id=code.id,
     )
     audit.record(
         db,

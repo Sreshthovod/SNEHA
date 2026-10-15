@@ -9,7 +9,7 @@ from app.api.router import api_router
 from app.api.routes.files import UPLOAD_PATH_SUFFIX
 from app.api.routes.speech import TRANSCRIBE_PATH_SUFFIX
 from app.core.body_limit import BodySizeLimitMiddleware
-from app.core.config import Settings, get_settings
+from app.core.config import Environment, Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.request_id import REQUEST_ID_HEADER, RequestIdMiddleware
 from app.core.version import service_version
@@ -27,11 +27,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "SNEHA is not a diagnostic system."
         ),
         debug=settings.debug,
+        # Interactive docs are for developers; production serves only the API.
+        docs_url=None if settings.environment is Environment.PRODUCTION else "/docs",
+        redoc_url=None if settings.environment is Environment.PRODUCTION else "/redoc",
+        openapi_url=None if settings.environment is Environment.PRODUCTION else "/openapi.json",
     )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allowed_origins,
-        allow_credentials=True,
+        # Bearer tokens only; the dashboard never sends cookies.
+        allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type", REQUEST_ID_HEADER],
         expose_headers=[REQUEST_ID_HEADER],

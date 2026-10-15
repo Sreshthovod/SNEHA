@@ -12,10 +12,12 @@ diagnostic system.**
 | API contract | `packages/api_contracts/openapi.json` | Generated from the API |
 | Docs | `docs/`, `packages/shared_docs/` | Architecture, offline/sync, privacy, AI, deployment, roadmap |
 
-**Status:** Stages 0–7 are implemented: patient app, dashboard, API, personalization,
-conversation, speech, analytics and PDF reports. See
+**Status:** Stages 0–8 are implemented: patient app, dashboard, API, personalization,
+conversation, speech, analytics, PDF reports, and a security/testing audit. **Not
+production-ready.** See [docs/stage8-validation-report.md](docs/stage8-validation-report.md)
+for test results, open findings and unverified requirements, plus
 [docs/feature-matrix.md](docs/feature-matrix.md) and
-[docs/implementation-roadmap.md](docs/implementation-roadmap.md), including known gaps.
+[docs/implementation-roadmap.md](docs/implementation-roadmap.md).
 
 ## Prerequisites
 
@@ -40,7 +42,7 @@ uv run uvicorn app.main:app --reload     # http://localhost:8000/docs
 Or run `./scripts/dev_api.sh` to do all of the above.
 
 ```bash
-uv run pytest                            # 267 tests on SQLite (PostgreSQL-only and live-Gemini tests skip)
+uv run pytest                            # 325 tests on SQLite (PostgreSQL-only and live-Gemini tests skip)
 SNEHA_TEST_POSTGRES_URL=postgresql://u:p@localhost:5432/sneha_test uv run pytest   # same suite on PostgreSQL (drops that DB's schema!)
 uv run ruff check . && uv run ruff format --check .
 uv run python scripts/export_openapi.py  # after any API change; commit the result

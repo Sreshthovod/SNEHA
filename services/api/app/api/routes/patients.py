@@ -9,7 +9,7 @@ from app.api.deps import DbSessionDep, PrincipalDep, SettingsDep, patient_access
 from app.core.errors import AppError, conflict, not_found
 from app.core.security import hash_pairing_code, new_pairing_code
 from app.core.time import utc_now
-from app.models.enums import ConsentType, UserRole
+from app.models.enums import ConsentStatus, ConsentType, UserRole
 from app.models.files import StoredFile
 from app.models.patients import (
     CaregiverRelationship,
@@ -207,9 +207,14 @@ def revoke_devices(
     request: Request,
     access: PatientAccess = patient_access(Permission.MANAGE_PATIENT),
 ) -> Response:
-    """Sign out every paired patient device (e.g. a lost phone)."""
+    """Sign out every paired patient device (e.g. a lost phone).
+
+    Unused pairing codes are cancelled too, so a code issued just before cannot be
+    redeemed afterwards.
+    """
+    now = utc_now()
+    _cancel_pairing_codes(db, access.patient.id, now)
     if access.patient.user_id:
-        now = utc_now()
         for session in db.scalars(
             select(AuthSession).where(
                 AuthSession.user_id == access.patient.user_id, AuthSession.revoked_at.is_(None)
@@ -331,7 +336,24 @@ def remove_caregiver(
             raise conflict(
                 "last_manager", "Add another managing caregiver before removing the last one."
             )
-    rel.revoked_at = utc_now()
+    now = utc_now()
+    rel.revoked_at = now
+    # Phones this caregiver paired, and codes they issued, must not outlive their access.
+    _cancel_pairing_codes(db, access.patient.id, now, created_by_id=rel.caregiver_id)
+    signed_out = 0
+    if access.patient.user_id:
+        sessions = db.scalars(
+            select(AuthSession)
+            .join(DevicePairingCode, AuthSession.pairing_code_id == DevicePairingCode.id)
+            .where(
+                AuthSession.user_id == access.patient.user_id,
+                AuthSession.revoked_at.is_(None),
+                DevicePairingCode.created_by_id == rel.caregiver_id,
+            )
+        ).all()
+        for session in sessions:
+            session.revoked_at = now
+        signed_out = len(sessions)
     audit.record(
         db,
         "patient.caregiver.remove",
@@ -340,9 +362,23 @@ def remove_caregiver(
         target_type="user",
         target_id=rel.caregiver_id,
         request=request,
+        details={"count": signed_out},
     )
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _cancel_pairing_codes(db, patient_id: str, now, *, created_by_id: str | None = None) -> None:
+    query = select(DevicePairingCode).where(
+        DevicePairingCode.patient_id == patient_id,
+        DevicePairingCode.used_at.is_(None),
+        DevicePairingCode.expires_at > now,
+    )
+    if created_by_id is not None:
+        query = query.where(DevicePairingCode.created_by_id == created_by_id)
+    for code in db.scalars(query):
+        # Marking the code used is how pairing codes are invalidated elsewhere too.
+        code.used_at = now
 
 
 # ---------- clinician access grants ----------
@@ -499,8 +535,32 @@ def record_consent(
 ) -> ConsentRecord:
     """Append a consent decision.
 
-    Withdrawing clinician sharing immediately blocks clinician access.
+    Withdrawing clinician sharing revokes every active clinician grant, so granting it
+    again later does not silently restore access for clinicians who were cut off.
     """
+    now = utc_now()
+    if (
+        body.consent_type == ConsentType.CLINICIAN_SHARING
+        and body.status == ConsentStatus.WITHDRAWN
+    ):
+        grants = db.scalars(
+            select(ClinicianAccessGrant).where(
+                ClinicianAccessGrant.patient_id == access.patient.id,
+                ClinicianAccessGrant.revoked_at.is_(None),
+            )
+        ).all()
+        for grant in grants:
+            grant.revoked_at = now
+            audit.record(
+                db,
+                "patient.clinician_grant.revoke",
+                actor_id=principal.id,
+                patient_id=access.patient.id,
+                target_type="user",
+                target_id=grant.clinician_id,
+                request=request,
+                details={"reason": "consent_withdrawn"},
+            )
     record = ConsentRecord(
         patient_id=access.patient.id,
         consent_type=body.consent_type,
@@ -508,7 +568,7 @@ def record_consent(
         given_by=body.given_by,
         policy_version=settings.consent_policy_version,
         recorded_by_id=principal.id,
-        recorded_at=utc_now(),
+        recorded_at=now,
     )
     db.add(record)
     audit.record(

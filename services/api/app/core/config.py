@@ -125,6 +125,9 @@ class Settings(BaseSettings):
                 problems.append("SNEHA_SECRET_KEY must be set to at least 32 characters")
             if self.debug:
                 problems.append("SNEHA_DEBUG must be false")
+            if self.database_echo:
+                # Echo logs every statement with its parameters, i.e. patient data.
+                problems.append("SNEHA_DATABASE_ECHO must be false")
             if "*" in self.cors_allowed_origins:
                 problems.append("SNEHA_CORS_ALLOWED_ORIGINS must not contain '*'")
             elif any(not o.startswith("https://") for o in self.cors_allowed_origins):

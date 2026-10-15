@@ -4,15 +4,24 @@ has been downloaded explicitly — a real transcription of a SYNTHETIC voice rec
 
 import io
 import os
+import sys
 import wave
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 from app.api.deps import get_settings
 from app.speech.audio import decode_wav, encode_wav
-from app.speech.base import InvalidAudio, LanguageUnsupported, ModelMissing, Transcription
+from app.speech.base import (
+    InvalidAudio,
+    LanguageUnsupported,
+    ModelMissing,
+    ProviderUnavailable,
+    SpeechError,
+    Transcription,
+)
 from app.speech.parler import IndicParlerProvider
 from app.speech.registry import asr_provider
 from app.speech.whisper import WHISPER_SNEHA_LANGUAGES, FasterWhisperProvider
@@ -105,6 +114,79 @@ def test_tts_missing_weights_and_unsupported_language(tmp_path) -> None:
         provider.synthesize("Khublei", "kha")
 
 
+def test_status_is_honest_when_package_is_missing(tmp_path, monkeypatch) -> None:
+    (tmp_path / "model.bin").write_bytes(b"weights")
+    (tmp_path / "config.json").write_text("{}")
+    assert FasterWhisperProvider(tmp_path).status().available is True  # package + weights
+    monkeypatch.setitem(sys.modules, "faster_whisper", None)  # import now fails
+    status = FasterWhisperProvider(tmp_path).status()
+    assert status.configured and not status.available
+    assert "not installed" in status.detail
+    with pytest.raises(ProviderUnavailable):
+        FasterWhisperProvider(tmp_path).transcribe(np.zeros(16000, dtype=np.float32), "en")
+    # Parler needs torch + parler-tts + transformers; weights alone are not "available".
+    monkeypatch.setitem(sys.modules, "parler_tts", None)
+    tts = IndicParlerProvider(tmp_path).status()
+    assert tts.configured and not tts.available and "not installed" in tts.detail
+
+
+def fake_parler(monkeypatch, *, model_error=None, tokenizer_error=None):
+    """Fake torch / parler_tts / transformers modules; records from_pretrained calls."""
+    calls: list[tuple[str, dict]] = []
+
+    class Model:
+        config = SimpleNamespace(
+            text_encoder=SimpleNamespace(_name_or_path="google/flan-t5-large"),
+            sampling_rate=16000,
+        )
+
+        @classmethod
+        def from_pretrained(cls, name, **kw):
+            calls.append((str(name), kw))
+            if model_error:
+                raise model_error
+            return cls()
+
+        def to(self, device):
+            return self
+
+    class Tokenizer:
+        @staticmethod
+        def from_pretrained(name, **kw):
+            calls.append((str(name), kw))
+            if tokenizer_error and "flan" in str(name):
+                raise tokenizer_error
+            return object()
+
+    torch = SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: False))
+    monkeypatch.setitem(sys.modules, "torch", torch)
+    monkeypatch.setitem(
+        sys.modules, "parler_tts", SimpleNamespace(ParlerTTSForConditionalGeneration=Model)
+    )
+    monkeypatch.setitem(sys.modules, "transformers", SimpleNamespace(AutoTokenizer=Tokenizer))
+    monkeypatch.setattr("app.speech.parler._importable", lambda: True)
+    return calls
+
+
+def test_corrupt_tts_weights_are_a_clean_unavailable_error(tmp_path, monkeypatch) -> None:
+    (tmp_path / "config.json").write_text("{}")
+    fake_parler(monkeypatch, model_error=RuntimeError(f"bad header in {tmp_path}/secret.bin"))
+    with pytest.raises(SpeechError) as raised:
+        IndicParlerProvider(tmp_path).synthesize("Namaste", "hi")
+    assert raised.value.status == 503
+    assert str(tmp_path) not in str(raised.value) + str(raised.value.details)
+
+
+def test_tts_never_downloads_the_description_tokenizer(tmp_path, monkeypatch) -> None:
+    (tmp_path / "config.json").write_text("{}")
+    calls = fake_parler(monkeypatch, tokenizer_error=OSError("not in local cache"))
+    with pytest.raises(SpeechError) as raised:
+        IndicParlerProvider(tmp_path).synthesize("Namaste", "hi")
+    assert raised.value.status == 503
+    assert calls and all(kw.get("local_files_only") is True for _, kw in calls)
+
+
+# ---------------- API ----------------
 # ---------------- API ----------------
 
 
@@ -161,6 +243,21 @@ def test_invalid_audio_via_api(api: Api, speaker, app, tmp_path) -> None:
     response = post_audio(api, device, pid, b"definitely not a wav file" * 4)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_audio"
+
+
+def test_corrupt_asr_weights_are_503_without_internal_details(
+    api: Api, speaker, app, tmp_path
+) -> None:
+    _, pid, device = speaker
+    (tmp_path / "model.bin").write_bytes(b"corrupt weights")
+    settings = app.dependency_overrides[get_settings]()
+    app.dependency_overrides[get_settings] = lambda: settings.model_copy(
+        update={"asr_model_path": tmp_path}
+    )
+    response = post_audio(api, device, pid, wav(1.0))
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["code"] in {"model_missing", "speech_unavailable"}
+    assert str(tmp_path) not in response.text and "Traceback" not in response.text
 
 
 def test_consent_and_authorization(api: Api) -> None:

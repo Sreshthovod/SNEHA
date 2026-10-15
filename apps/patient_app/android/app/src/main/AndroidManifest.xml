@@ -4,10 +4,15 @@
     <!-- Optional voice input: requested only when the person taps the microphone,
          and only offered when the family has granted voice-processing consent. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- The local database and cached photos hold patient data; keep them off cloud
+         backups and device-to-device transfer. -->
     <application
         android:label="SNEHA"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"

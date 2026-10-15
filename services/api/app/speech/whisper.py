@@ -9,6 +9,7 @@ mni, nag. Accuracy for Assamese and Nepali is markedly lower than for Hindi/Engl
 evaluate with native speakers (and older voices) before relying on it.
 """
 
+import logging
 import math
 import threading
 from pathlib import Path
@@ -21,13 +22,20 @@ from app.speech.base import (
     ProviderStatus,
     ProviderUnavailable,
     Transcription,
+    importable,
 )
+
+logger = logging.getLogger(__name__)
 
 WHISPER_SNEHA_LANGUAGES = ("as", "bn", "en", "hi", "ne")
 SETUP_HINT = (
     "Download a model explicitly: `uv run python scripts/download_models.py asr --size small`, "
     "then set SNEHA_ASR_MODEL_PATH to the printed directory."
 )
+
+
+def _importable() -> bool:
+    return importable("faster_whisper")
 
 
 class FasterWhisperProvider:
@@ -48,13 +56,22 @@ class FasterWhisperProvider:
     def status(self) -> ProviderStatus:
         configured = self.model_path is not None
         present = self._weights_present()
+        installed = _importable()
+        if not configured:
+            detail = SETUP_HINT
+        elif not present:
+            detail = "model files not found"
+        elif not installed:
+            detail = "faster-whisper is not installed (install the `speech` dependency group)"
+        else:
+            detail = "ready"
         return ProviderStatus(
             name=self.name,
             configured=configured,
-            available=present,
+            available=present and installed,
             model=self.model_path.name if self.model_path else None,
             languages=list(WHISPER_SNEHA_LANGUAGES),
-            detail="ready" if present else ("model files not found" if configured else SETUP_HINT),
+            detail=detail,
         )
 
     def supports(self, language: str) -> bool:
@@ -69,9 +86,16 @@ class FasterWhisperProvider:
                     from faster_whisper import WhisperModel
                 except ImportError as error:  # speech group not installed
                     raise ProviderUnavailable("faster-whisper is not installed.") from error
-                self._model = WhisperModel(
-                    str(self.model_path), device=self.device, compute_type=self.compute_type
-                )
+                try:
+                    self._model = WhisperModel(
+                        str(self.model_path), device=self.device, compute_type=self.compute_type
+                    )
+                except Exception as error:  # corrupt / incompatible weights
+                    # Only the error type is logged; messages can contain file paths.
+                    logger.warning("ASR model failed to load: %s", type(error).__name__)
+                    raise ProviderUnavailable(
+                        "The speech recognition model could not be loaded.", setup=SETUP_HINT
+                    ) from None
         return self._model
 
     def transcribe(self, samples: np.ndarray, language: str) -> Transcription:

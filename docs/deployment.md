@@ -17,7 +17,7 @@ Patient app (APK/AAB) ── HTTPS ── API
 ```bash
 cd services/api
 uv sync --no-dev --frozen
-export SNEHA_ENVIRONMENT=production
+export SNEHA_ENVIRONMENT=production   # REQUIRED: without it the API applies development rules
 export SNEHA_DATABASE_URL=postgresql://sneha:…@db:5432/sneha
 export SNEHA_SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_urlsafe(48))")   # store in a secret manager
 export SNEHA_CORS_ALLOWED_ORIGINS=https://dashboard.example.org
@@ -72,12 +72,20 @@ VITE_API_BASE_URL=https://api.example.org npm ci && npm run build   # outputs di
 ```
 
 Serve `dist/` as static files with an SPA fallback to `index.html` and headers
-`Content-Security-Policy: default-src 'self'; connect-src https://api.example.org`,
+`Content-Security-Policy: default-src 'self'; connect-src https://api.example.org; img-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`
+(`blob:` is needed because protected photos are fetched with the bearer token and shown
+from blob URLs),
 `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
 
 ## Patient app
 
-Requires the Android SDK (not installed on the machine used to build Stage 0/2).
+Requires the Android SDK and JDK 17 or 21 (Gradle 8.14 cannot run on Java 25, which
+newer Android Studio versions bundle; point Flutter at another JDK with
+`flutter config --jdk-dir=<path>`).
+
+Create `android/key.properties` (git-ignored) with `storeFile`, `storePassword`,
+`keyAlias` and `keyPassword` for your upload key. Without it the release build prints a
+warning and is signed with the **debug** key, which must never be distributed.
 
 ```bash
 cd apps/patient_app

@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import DataError, IntegrityError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.schemas.common import ErrorBody, ErrorResponse
@@ -114,15 +114,24 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(IntegrityError)
     async def _integrity_error(request: Request, exc: IntegrityError) -> JSONResponse:
-        # Constraint details can leak schema/data; log them, return a generic message.
-        logger.warning("Integrity error: %s", exc.orig)
+        # The driver message can contain row values (e.g. an email); log only the constraint.
+        constraint = getattr(getattr(exc.orig, "diag", None), "constraint_name", None)
+        logger.warning("Integrity error (%s): constraint=%s", type(exc.orig).__name__, constraint)
         return _error_response(
             request, 409, "constraint_violation", "The request conflicts with existing data."
         )
 
+    @app.exception_handler(DataError)
+    async def _data_error(request: Request, exc: DataError) -> JSONResponse:
+        # A value the database cannot store. Request validation should catch these first.
+        logger.warning("Data error: %s", type(exc.orig).__name__)
+        return _error_response(
+            request, 422, "invalid_data", "The request contains a value that cannot be stored."
+        )
+
     @app.exception_handler(OperationalError)
     async def _database_unavailable(request: Request, exc: OperationalError) -> JSONResponse:
-        logger.error("Database unavailable: %s", exc.orig)
+        logger.error("Database unavailable: %s", type(exc.orig).__name__)
         return _error_response(
             request,
             503,
