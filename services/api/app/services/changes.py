@@ -4,7 +4,8 @@ from sqlalchemy import or_, select, text
 from sqlalchemy.orm import Session
 
 from app.core.time import utc_now
-from app.models.enums import MemoryStatus, SyncEntity, SyncOperation
+from app.models.care import CaregiverObservation
+from app.models.enums import MemoryStatus, ObservationCategory, SyncEntity, SyncOperation
 from app.models.memories import MemoryItem, MemoryRelationship
 from app.models.sync import SyncChange
 
@@ -71,3 +72,19 @@ def log_memory_change(db: Session, memory: MemoryItem, *, deleted: bool = False)
             SyncOperation.DELETE if deleted else SyncOperation.UPSERT,
             memory.patient_id,
         )
+
+
+def log_fatigue_change(db: Session, obs: CaregiverObservation, *, deleted: bool = False) -> None:
+    """Devices receive fatigue observations (level and time only) so the phone's engine and
+    a running activity respect a caregiver's report offline. Other categories never sync;
+    an observation that stops being about fatigue is sent as a delete."""
+    if obs.category is not ObservationCategory.FATIGUE and not deleted:
+        log_change(db, SyncEntity.FATIGUE_REPORT, obs.id, SyncOperation.DELETE, obs.patient_id)
+        return
+    log_change(
+        db,
+        SyncEntity.FATIGUE_REPORT,
+        obs.id,
+        SyncOperation.DELETE if deleted else SyncOperation.UPSERT,
+        obs.patient_id,
+    )

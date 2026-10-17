@@ -3,7 +3,13 @@ from typing import Annotated
 
 from pydantic import Field, StringConstraints, model_validator
 
-from app.models.enums import ObservationCategory, ObservationStatus, RecordSource, ReportStatus
+from app.models.enums import (
+    FatigueLevel,
+    ObservationCategory,
+    ObservationStatus,
+    RecordSource,
+    ReportStatus,
+)
 from app.schemas.base import RequestModel, ResponseModel, ShortText, UtcDatetime
 
 LocalTime = Annotated[str, StringConstraints(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")]
@@ -13,6 +19,17 @@ class ObservationCreate(RequestModel):
     observed_at: UtcDatetime
     category: ObservationCategory
     note: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+    fatigue_level: FatigueLevel | None = Field(
+        default=None,
+        description="Only for category 'fatigue'. 'severe' means the next suggestion is a "
+        "rest, and the patient's phone stops a running activity once it has synced.",
+    )
+
+    @model_validator(mode="after")
+    def _level_only_for_fatigue(self) -> "ObservationCreate":
+        if self.fatigue_level is not None and self.category is not ObservationCategory.FATIGUE:
+            raise ValueError("fatigue_level is only allowed for category 'fatigue'")
+        return self
 
 
 ObservationNote = Annotated[
@@ -30,6 +47,7 @@ class ObservationCorrection(RequestModel):
     observed_at: UtcDatetime | None = None
     category: ObservationCategory | None = None
     note: ObservationNote | None = None
+    fatigue_level: FatigueLevel | None = None
     reason: WorkflowNote = Field(description="Why it was corrected (kept in the history).")
 
 
@@ -50,6 +68,7 @@ class ObservationOut(ResponseModel):
     observed_at: datetime
     category: ObservationCategory
     note: str
+    fatigue_level: FatigueLevel | None = None
     created_at: datetime
     source: RecordSource
     status: ObservationStatus

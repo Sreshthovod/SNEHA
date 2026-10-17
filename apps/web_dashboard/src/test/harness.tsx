@@ -2,7 +2,7 @@ import { render } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { vi } from 'vitest'
 import { setToken } from '../api/session'
-import type { AnalyticsSummary, Observation, Patient, User } from '../api/types'
+import type { AnalyticsSummary, Observation, Patient, ReviewItem, User } from '../api/types'
 import { routes } from '../routes'
 import { AuthProvider } from '../state/AuthProvider'
 import { SettingsProvider } from '../state/SettingsProvider'
@@ -111,7 +111,37 @@ export function baseRoutes(user: User, opts: { manager?: boolean } = {}): Route[
           : [],
     },
     { path: '/activities', handler: () => [] },
+    // Review items: none by default. Tests that need them put their own routes first.
+    { method: 'POST', path: `${P}/review-items/scan`, handler: () => [] },
+    { path: `${P}/memory-relationships`, handler: () => [] },
+    { path: `${P}/review-items`, handler: () => [] },
   ]
+}
+
+/** SYNTHETIC review item fixture (an automated prompt awaiting a caregiver's decision). */
+export function reviewItem(overrides: Partial<ReviewItem> = {}): ReviewItem {
+  return {
+    id: 'ri-1',
+    patient_id: PATIENT.id,
+    rule_id: 'ACCURACY_LOWER_THAN_USUAL',
+    kind: 'change',
+    title: 'Scores lower than this person’s usual',
+    explanation: 'Average score was 0.60 compared with a usual 0.90, lower on 100% of days with scored activities, at a similar difficulty level.',
+    numbers: { baseline: 0.9, current: 0.6, share_of_days: 1 },
+    observation_ids: [],
+    period_start: '2026-10-01',
+    period_end: '2026-10-09',
+    method_version: 'analytics-1.0.0',
+    config_version: '2026.10.1',
+    status: 'awaiting_review',
+    decided_by_id: null,
+    decided_at: null,
+    decision_reason: null,
+    created_at: '2026-10-10T00:00:00Z',
+    updated_at: '2026-10-10T00:00:00Z',
+    wording: 'An automated prompt from the person’s own activity records. It is not a diagnosis and not a finding.',
+    ...overrides,
+  }
 }
 
 export function renderApp(path: string, opts: { signedIn?: boolean } = {}) {

@@ -142,6 +142,7 @@ class MemoryItem {
     required this.title,
     this.description,
     this.approxYear,
+    this.relationship,
     this.tags = const [],
     this.mediaFileId,
     this.version = 1,
@@ -154,6 +155,10 @@ class MemoryItem {
   final String title;
   final String? description;
   final int? approxYear;
+
+  /// Person memories only: how this person is related to the patient, exactly
+  /// as the caregiver entered it ("granddaughter"). Never inferred.
+  final String? relationship;
   final List<String> tags;
   final String? mediaFileId;
   final int version;
@@ -170,6 +175,7 @@ class MemoryItem {
     title: j['title'] as String,
     description: j['description'] as String?,
     approxYear: j['approx_year'] as int?,
+    relationship: j['relationship'] as String?,
     tags: (j['tags'] as List<dynamic>? ?? const []).cast<String>(),
     mediaFileId: j['media_file_id'] as String?,
     version: j['version'] as int? ?? 1,
@@ -312,4 +318,18 @@ class PatientPreferences {
             if (t is String) t,
         ],
       );
+}
+
+/// A caregiver-made link between two approved memories (MemoryRelationshipOut):
+/// `person_in` | `located_at` | `part_of` | `related_to`, from → to.
+class MemoryLinkFact {
+  const MemoryLinkFact({
+    required this.fromId,
+    required this.toId,
+    required this.type,
+  });
+
+  final String fromId;
+  final String toId;
+  final String type;
 }

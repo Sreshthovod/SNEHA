@@ -80,7 +80,7 @@ def test_recommendation_is_explained(api: Api, fam) -> None:
     assert rec["action"] == "activity"
     assert rec["activity_id"] and rec["difficulty"] == 1
     assert rec["reason_codes"]
-    assert rec["algorithm_version"] == "1.0.0"
+    assert rec["algorithm_version"] == "1.2.0"
     assert rec["config_version"]
     assert rec["fallback"] == {"used": True, "reason": "no_history"}
     assert rec["level_parameters"] and rec["instructions"]

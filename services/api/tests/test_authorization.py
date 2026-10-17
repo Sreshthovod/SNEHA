@@ -105,6 +105,18 @@ def endpoints(w) -> list[tuple[str, str, dict | None]]:
             {"ended_at": iso(now()), "end_reason": "completed"},
         ),
         ("GET", f"{base}/sessions/{w['session_id']}/results", None),
+        ("GET", f"{base}/sessions/{w['session_id']}/events", None),
+        ("GET", f"{base}/review-items", None),
+        (
+            "POST",
+            f"{base}/review-items/scan",
+            {"period_start": "2026-10-01", "period_end": "2026-10-08"},
+        ),
+        (
+            "POST",
+            f"{base}/review-items/{new_uuid()}/decision",
+            {"decision": "confirmed", "reason": "Synthetic hijack"},
+        ),
         ("POST", f"{base}/sessions/{w['session_id']}/results", "RESULT"),
         ("GET", f"{base}/history?from=2026-10-01&to=2026-10-09", None),
         ("GET", f"{base}/observations", None),

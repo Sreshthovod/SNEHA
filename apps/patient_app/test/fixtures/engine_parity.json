@@ -1,6 +1,6 @@
 {
-  "algorithm_version": "1.0.0",
-  "config_version": "2026.10.1",
+  "algorithm_version": "1.2.0",
+  "config_version": "2026.10.3",
   "now": "2026-10-15T10:00:00Z",
   "scenarios": [
     {
@@ -13,6 +13,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "COLD_START_DEFAULT",
           "DIFFICULTY_STARTING_LEVEL"
@@ -86,6 +87,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -131,6 +133,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000001",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -143,6 +146,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000002",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -155,6 +159,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000003",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
@@ -171,6 +176,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -211,6 +217,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000004",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -223,6 +230,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000005",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
@@ -239,6 +247,7 @@
         "fallback_used": false,
         "hints_enabled": true,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -285,6 +294,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000006",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -297,6 +307,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000007",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -309,6 +320,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000008",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -321,6 +333,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000009",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.2
           },
@@ -333,6 +346,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000010",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.2
           }
@@ -349,6 +363,7 @@
         "fallback_used": false,
         "hints_enabled": true,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -395,6 +410,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000011",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -407,6 +423,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000012",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -419,6 +436,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000013",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -431,6 +449,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000014",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.6
           },
@@ -443,6 +462,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000015",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.2
           },
@@ -455,6 +475,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000016",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.3
           }
@@ -471,6 +492,7 @@
         "fallback_used": false,
         "hints_enabled": true,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -512,6 +534,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000017",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.1
           },
@@ -524,6 +547,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000018",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.2
           }
@@ -540,6 +564,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -585,6 +610,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000019",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -597,6 +623,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000020",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -609,6 +636,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000021",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": null
           },
@@ -621,6 +649,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000022",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
@@ -637,6 +666,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -683,6 +713,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000023",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -695,6 +726,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000024",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -707,6 +739,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000025",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -719,6 +752,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000026",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": null
           }
@@ -733,12 +767,14 @@
         "difficulty": 1,
         "fallback_reason": null,
         "fallback_used": false,
-        "hints_enabled": false,
+        "hints_enabled": true,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
-          "DIFFICULTY_UNCHANGED"
+          "DIFFICULTY_UNCHANGED",
+          "HINT_SUPPORT_AFTER_HINT_USE"
         ],
         "routine_item_ids": [],
         "supporting": [
@@ -756,6 +792,21 @@
             "activity_result",
             "00000000-0000-4000-8000-000000000029",
             "difficulty 1, completed 2026-10-15"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000027",
+            "3 hints used"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000028",
+            "3 hints used"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000029",
+            "3 hints used"
           ]
         ]
       },
@@ -780,6 +831,7 @@
             "fatigue_reported": false,
             "hints": 3,
             "id": "00000000-0000-4000-8000-000000000027",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -792,6 +844,7 @@
             "fatigue_reported": false,
             "hints": 3,
             "id": "00000000-0000-4000-8000-000000000028",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -804,6 +857,7 @@
             "fatigue_reported": false,
             "hints": 3,
             "id": "00000000-0000-4000-8000-000000000029",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
@@ -820,6 +874,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -865,6 +920,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000030",
+            "instructions_repeated": null,
             "mean_response_ms": 2000,
             "score": 0.9
           },
@@ -877,6 +933,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000031",
+            "instructions_repeated": null,
             "mean_response_ms": 2000,
             "score": 0.9
           },
@@ -889,6 +946,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000032",
+            "instructions_repeated": null,
             "mean_response_ms": 5000,
             "score": 0.9
           }
@@ -905,6 +963,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -950,6 +1009,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000033",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -962,6 +1022,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000034",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": null
           },
@@ -974,6 +1035,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000035",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -986,6 +1048,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000036",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
@@ -1002,6 +1065,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "FAMILIAR_ACTIVITY",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -1047,6 +1111,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000037",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1059,6 +1124,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000038",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1071,6 +1137,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000039",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1083,6 +1150,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000040",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1095,6 +1163,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000041",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1107,6 +1176,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000042",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1119,6 +1189,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000043",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1131,6 +1202,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000044",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1143,6 +1215,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000045",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1155,6 +1228,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000046",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1167,6 +1241,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000047",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1179,6 +1254,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000048",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1191,6 +1267,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000049",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1203,6 +1280,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000050",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1215,6 +1293,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000051",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1227,6 +1306,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000052",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1239,6 +1319,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000053",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1251,6 +1332,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000054",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1263,6 +1345,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000055",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           },
@@ -1275,6 +1358,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000056",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
@@ -1291,6 +1375,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "STOP_REQUESTED"
         ],
@@ -1371,6 +1456,7 @@
         "fallback_used": true,
         "hints_enabled": true,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "COLD_START_DEFAULT",
           "DIFFICULTY_STARTING_LEVEL",
@@ -1452,6 +1538,7 @@
         "fallback_used": false,
         "hints_enabled": true,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "DIFFICULTY_STARTING_LEVEL",
           "LOW_EFFORT_FOR_FATIGUE"
@@ -1528,6 +1615,7 @@
             "fatigue_reported": true,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000057",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": null
           }
@@ -1544,6 +1632,7 @@
         "fallback_used": false,
         "hints_enabled": true,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "RECENT_FATIGUE_OBSERVATION",
           "DIFFICULTY_STARTING_LEVEL",
@@ -1628,10 +1717,191 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000058",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
         ]
+      }
+    },
+    {
+      "expected": {
+        "action": "break",
+        "activity_slug": "picture-pairs",
+        "break_minutes": 10,
+        "difficulty": 1,
+        "fallback_reason": "no_history",
+        "fallback_used": true,
+        "hints_enabled": true,
+        "memory_item_ids": [],
+        "read_aloud_first": false,
+        "reason_codes": [
+          "CAREGIVER_REPORTED_SEVERE_FATIGUE",
+          "COLD_START_DEFAULT",
+          "DIFFICULTY_STARTING_LEVEL",
+          "LOW_EFFORT_FOR_FATIGUE"
+        ],
+        "routine_item_ids": [],
+        "supporting": [
+          [
+            "caregiver_observation",
+            "obs-3",
+            "caregiver noted tiredness at 09:00 UTC (severe)"
+          ]
+        ]
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "picture-pairs"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0003",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "daily-sequence"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0006",
+            "max": 5,
+            "memory": true,
+            "min": 1,
+            "slug": "photo-recall"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0007",
+            "max": 1,
+            "memory": true,
+            "min": 1,
+            "slug": "story-time"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0008",
+            "max": 3,
+            "memory": true,
+            "min": 1,
+            "slug": "familiar-faces"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "name-the-object"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0010",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "sort-into-groups"
+          }
+        ],
+        "name": "caregiver_severe_fatigue_offers_break",
+        "observations": [
+          {
+            "category": "fatigue",
+            "fatigue_level": "severe",
+            "id": "obs-3",
+            "observed_at": "2026-10-15T09:00:00Z"
+          }
+        ],
+        "results": []
+      }
+    },
+    {
+      "expected": {
+        "action": "activity",
+        "activity_slug": "picture-pairs",
+        "break_minutes": null,
+        "difficulty": 1,
+        "fallback_reason": "no_history",
+        "fallback_used": true,
+        "hints_enabled": true,
+        "memory_item_ids": [],
+        "read_aloud_first": false,
+        "reason_codes": [
+          "RECENT_FATIGUE_OBSERVATION",
+          "COLD_START_DEFAULT",
+          "DIFFICULTY_STARTING_LEVEL",
+          "LOW_EFFORT_FOR_FATIGUE"
+        ],
+        "routine_item_ids": [],
+        "supporting": [
+          [
+            "caregiver_observation",
+            "obs-4",
+            "caregiver noted tiredness at 09:00 UTC (mild)"
+          ]
+        ]
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "picture-pairs"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0003",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "daily-sequence"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0006",
+            "max": 5,
+            "memory": true,
+            "min": 1,
+            "slug": "photo-recall"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0007",
+            "max": 1,
+            "memory": true,
+            "min": 1,
+            "slug": "story-time"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0008",
+            "max": 3,
+            "memory": true,
+            "min": 1,
+            "slug": "familiar-faces"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "name-the-object"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0010",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "sort-into-groups"
+          }
+        ],
+        "name": "caregiver_mild_fatigue_low_effort",
+        "observations": [
+          {
+            "category": "fatigue",
+            "fatigue_level": "mild",
+            "id": "obs-4",
+            "observed_at": "2026-10-15T09:00:00Z"
+          }
+        ],
+        "results": []
       }
     },
     {
@@ -1644,6 +1914,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "AVOID_REPETITION",
           "DIFFICULTY_STARTING_LEVEL"
@@ -1721,6 +1992,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000059",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
@@ -1737,6 +2009,7 @@
         "fallback_used": false,
         "hints_enabled": true,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "RECENT_FATIGUE_FEEDBACK",
           "DIFFICULTY_STARTING_LEVEL",
@@ -1814,6 +2087,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000060",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.9
           }
@@ -1837,6 +2111,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "INTEREST_MATCH",
           "COLD_START_DEFAULT",
@@ -1924,6 +2199,7 @@
           "m2",
           "m3"
         ],
+        "read_aloud_first": false,
         "reason_codes": [
           "INTEREST_MATCH",
           "COLD_START_DEFAULT",
@@ -2036,6 +2312,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "CONVERSATION_CONTEXT_MATCH",
           "COLD_START_DEFAULT",
@@ -2119,6 +2396,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "INTEREST_MATCH",
           "COLD_START_DEFAULT",
@@ -2206,6 +2484,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "AVOID_REPETITION",
           "DIFFICULTY_STARTING_LEVEL"
@@ -2276,6 +2555,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000061",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.7
           }
@@ -2292,6 +2572,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "LOW_ENGAGEMENT_SWITCH",
           "AVOID_REPETITION",
@@ -2374,6 +2655,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000062",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": null
           },
@@ -2386,6 +2668,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000063",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.7
           },
@@ -2398,6 +2681,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000064",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.7
           }
@@ -2414,6 +2698,7 @@
         "fallback_used": false,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "ENJOYED_BEFORE",
           "FAMILIAR_ACTIVITY",
@@ -2507,6 +2792,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000065",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.7
           },
@@ -2519,6 +2805,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000066",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.7
           },
@@ -2531,6 +2818,7 @@
             "fatigue_reported": false,
             "hints": 0,
             "id": "00000000-0000-4000-8000-000000000067",
+            "instructions_repeated": null,
             "mean_response_ms": null,
             "score": 0.7
           }
@@ -2547,6 +2835,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "DISLIKED_ACTIVITY_EXCLUDED",
           "COLD_START_DEFAULT",
@@ -2630,6 +2919,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "ONLY_AVAILABLE_ACTIVITY",
           "COLD_START_DEFAULT",
@@ -2688,6 +2978,7 @@
           "m2",
           "m3"
         ],
+        "read_aloud_first": false,
         "reason_codes": [
           "ONLY_AVAILABLE_ACTIVITY",
           "COLD_START_DEFAULT",
@@ -2747,6 +3038,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "ONLY_AVAILABLE_ACTIVITY",
           "COLD_START_DEFAULT",
@@ -2810,6 +3102,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "LIMITED_TO_AVAILABLE_OFFLINE_CONTENT",
           "COLD_START_DEFAULT",
@@ -2888,6 +3181,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "LANGUAGE_CONTENT_FALLBACK",
           "ONLY_AVAILABLE_ACTIVITY",
@@ -2922,6 +3216,7 @@
         "fallback_used": true,
         "hints_enabled": false,
         "memory_item_ids": [],
+        "read_aloud_first": false,
         "reason_codes": [
           "NO_AVAILABLE_ACTIVITY"
         ],
@@ -2945,6 +3240,630 @@
         },
         "name": "nothing_available",
         "results": []
+      }
+    },
+    {
+      "expected": {
+        "action": "activity",
+        "activity_slug": "picture-pairs",
+        "break_minutes": null,
+        "difficulty": 1,
+        "fallback_reason": null,
+        "fallback_used": false,
+        "hints_enabled": true,
+        "memory_item_ids": [],
+        "read_aloud_first": false,
+        "reason_codes": [
+          "FAMILIAR_ACTIVITY",
+          "ONLY_AVAILABLE_ACTIVITY",
+          "DIFFICULTY_UNCHANGED",
+          "HINT_SUPPORT_AFTER_HINT_USE"
+        ],
+        "routine_item_ids": [],
+        "supporting": [
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000068",
+            "difficulty 1, completed 2026-10-15"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000069",
+            "difficulty 1, completed 2026-10-15"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000068",
+            "3 hints used"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000069",
+            "3 hints used"
+          ]
+        ]
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "picture-pairs"
+          }
+        ],
+        "name": "hint_heavy_runs_turn_hints_on",
+        "results": [
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "completed_at": "2026-10-15T01:08:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 3,
+            "id": "00000000-0000-4000-8000-000000000068",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.7
+          },
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "completed_at": "2026-10-15T01:09:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 3,
+            "id": "00000000-0000-4000-8000-000000000069",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.7
+          }
+        ]
+      }
+    },
+    {
+      "expected": {
+        "action": "activity",
+        "activity_slug": "picture-pairs",
+        "break_minutes": null,
+        "difficulty": 1,
+        "fallback_reason": null,
+        "fallback_used": false,
+        "hints_enabled": false,
+        "memory_item_ids": [],
+        "read_aloud_first": false,
+        "reason_codes": [
+          "FAMILIAR_ACTIVITY",
+          "ONLY_AVAILABLE_ACTIVITY",
+          "DIFFICULTY_UNCHANGED"
+        ],
+        "routine_item_ids": [],
+        "supporting": [
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000070",
+            "difficulty 1, completed 2026-10-15"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000071",
+            "difficulty 1, completed 2026-10-15"
+          ]
+        ]
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "picture-pairs"
+          }
+        ],
+        "name": "one_hint_heavy_run_is_not_a_pattern",
+        "results": [
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "completed_at": "2026-10-15T01:10:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 3,
+            "id": "00000000-0000-4000-8000-000000000070",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.7
+          },
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "completed_at": "2026-10-15T01:11:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000071",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "expected": {
+        "action": "activity",
+        "activity_slug": "picture-pairs",
+        "break_minutes": null,
+        "difficulty": 1,
+        "fallback_reason": null,
+        "fallback_used": false,
+        "hints_enabled": false,
+        "memory_item_ids": [],
+        "read_aloud_first": false,
+        "reason_codes": [
+          "AVOID_REPETITION",
+          "EASIER_ALTERNATIVE_AFTER_STRUGGLE",
+          "DIFFICULTY_STARTING_LEVEL"
+        ],
+        "routine_item_ids": [],
+        "supporting": [
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000072",
+            "struggled at the easiest level"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000073",
+            "struggled at the easiest level"
+          ]
+        ]
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "picture-pairs"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "name-the-object"
+          }
+        ],
+        "name": "struggle_at_easiest_prefers_gentler_activity",
+        "results": [
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "completed_at": "2026-10-15T01:12:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000072",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.2
+          },
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "completed_at": "2026-10-15T01:13:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000073",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.3
+          }
+        ]
+      }
+    },
+    {
+      "expected": {
+        "action": "activity",
+        "activity_slug": "name-the-object",
+        "break_minutes": null,
+        "difficulty": 1,
+        "fallback_reason": null,
+        "fallback_used": false,
+        "hints_enabled": true,
+        "memory_item_ids": [],
+        "read_aloud_first": false,
+        "reason_codes": [
+          "FAMILIAR_ACTIVITY",
+          "ONLY_AVAILABLE_ACTIVITY",
+          "DIFFICULTY_UNCHANGED",
+          "HINTS_OFFERED_AFTER_ERRORS"
+        ],
+        "routine_item_ids": [],
+        "supporting": [
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000074",
+            "difficulty 1, completed 2026-10-15"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000075",
+            "difficulty 1, completed 2026-10-15"
+          ]
+        ]
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "name-the-object"
+          }
+        ],
+        "name": "struggle_at_easiest_only_activity_keeps_it_with_hints",
+        "results": [
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "completed_at": "2026-10-15T01:14:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000074",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.2
+          },
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "completed_at": "2026-10-15T01:15:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000075",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.3
+          }
+        ]
+      }
+    },
+    {
+      "expected": {
+        "action": "activity",
+        "activity_slug": "name-the-object",
+        "break_minutes": null,
+        "difficulty": 1,
+        "fallback_reason": null,
+        "fallback_used": false,
+        "hints_enabled": false,
+        "memory_item_ids": [],
+        "read_aloud_first": true,
+        "reason_codes": [
+          "AVOID_REPETITION",
+          "DIFFICULTY_STARTING_LEVEL",
+          "INSTRUCTIONS_READ_ALOUD_FIRST"
+        ],
+        "routine_item_ids": [],
+        "supporting": [
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000076",
+            "question read aloud 2x"
+          ],
+          [
+            "activity_result",
+            "00000000-0000-4000-8000-000000000077",
+            "question read aloud 1x"
+          ]
+        ]
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "picture-pairs"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0003",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "daily-sequence"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0006",
+            "max": 5,
+            "memory": true,
+            "min": 1,
+            "slug": "photo-recall"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0007",
+            "max": 1,
+            "memory": true,
+            "min": 1,
+            "slug": "story-time"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0008",
+            "max": 3,
+            "memory": true,
+            "min": 1,
+            "slug": "familiar-faces"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "name-the-object"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0010",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "sort-into-groups"
+          }
+        ],
+        "name": "read_aloud_presses_read_questions_first",
+        "results": [
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "completed_at": "2026-10-15T01:16:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000076",
+            "instructions_repeated": 2,
+            "mean_response_ms": null,
+            "score": 0.9
+          },
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0010",
+            "completed_at": "2026-10-15T01:17:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000077",
+            "instructions_repeated": 1,
+            "mean_response_ms": null,
+            "score": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "expected": {
+        "action": "activity",
+        "activity_slug": "name-the-object",
+        "break_minutes": null,
+        "difficulty": 1,
+        "fallback_reason": null,
+        "fallback_used": false,
+        "hints_enabled": false,
+        "memory_item_ids": [],
+        "read_aloud_first": false,
+        "reason_codes": [
+          "AVOID_REPETITION",
+          "DIFFICULTY_STARTING_LEVEL"
+        ],
+        "routine_item_ids": [],
+        "supporting": []
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "picture-pairs"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0003",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "daily-sequence"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0006",
+            "max": 5,
+            "memory": true,
+            "min": 1,
+            "slug": "photo-recall"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0007",
+            "max": 1,
+            "memory": true,
+            "min": 1,
+            "slug": "story-time"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0008",
+            "max": 3,
+            "memory": true,
+            "min": 1,
+            "slug": "familiar-faces"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "name-the-object"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0010",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "sort-into-groups"
+          }
+        ],
+        "name": "too_few_read_aloud_presses",
+        "results": [
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "completed_at": "2026-10-15T01:18:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000078",
+            "instructions_repeated": 1,
+            "mean_response_ms": null,
+            "score": 0.9
+          },
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0010",
+            "completed_at": "2026-10-15T01:19:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 0,
+            "id": "00000000-0000-4000-8000-000000000079",
+            "instructions_repeated": null,
+            "mean_response_ms": null,
+            "score": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "expected": {
+        "action": "stop",
+        "activity_slug": null,
+        "break_minutes": null,
+        "difficulty": null,
+        "fallback_reason": null,
+        "fallback_used": false,
+        "hints_enabled": false,
+        "memory_item_ids": [],
+        "read_aloud_first": false,
+        "reason_codes": [
+          "STOP_REQUESTED"
+        ],
+        "routine_item_ids": [],
+        "supporting": [
+          [
+            "request",
+            "stop_requested",
+            "the patient asked to stop"
+          ]
+        ]
+      },
+      "input": {
+        "activities": [
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "picture-pairs"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0003",
+            "max": 5,
+            "memory": false,
+            "min": 1,
+            "slug": "daily-sequence"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0006",
+            "max": 5,
+            "memory": true,
+            "min": 1,
+            "slug": "photo-recall"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0007",
+            "max": 1,
+            "memory": true,
+            "min": 1,
+            "slug": "story-time"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0008",
+            "max": 3,
+            "memory": true,
+            "min": 1,
+            "slug": "familiar-faces"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0009",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "name-the-object"
+          },
+          {
+            "id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0010",
+            "max": 3,
+            "memory": false,
+            "min": 1,
+            "slug": "sort-into-groups"
+          }
+        ],
+        "name": "stop_beats_support_rules",
+        "results": [
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "completed_at": "2026-10-15T01:20:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 3,
+            "id": "00000000-0000-4000-8000-000000000080",
+            "instructions_repeated": 3,
+            "mean_response_ms": null,
+            "score": 0.7
+          },
+          {
+            "abandoned": false,
+            "activity_id": "4b0c2d0e-5f0e-4c39-9d43-1a6f3f0a0001",
+            "completed_at": "2026-10-15T01:21:00Z",
+            "difficulty": 1,
+            "engagement": null,
+            "fatigue_reported": false,
+            "hints": 3,
+            "id": "00000000-0000-4000-8000-000000000081",
+            "instructions_repeated": 3,
+            "mean_response_ms": null,
+            "score": 0.7
+          }
+        ],
+        "stop": true
       }
     }
   ]

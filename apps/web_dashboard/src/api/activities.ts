@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { Activity, PerformanceHistory, Result, Session } from './types'
+import type { Activity, PerformanceHistory, Result, Session, SessionEvent } from './types'
 
 const base = (pid: string) => `/patients/${encodeURIComponent(pid)}`
 
@@ -14,3 +14,8 @@ export const listResults = (pid: string, sessionId: string, signal?: AbortSignal
 /** Inclusive calendar dates (YYYY-MM-DD) in the patient's timezone. */
 export const getHistory = (pid: string, from: string, to: string, signal?: AbortSignal) =>
   apiRequest<PerformanceHistory>(`${base(pid)}/history`, { query: { from, to }, signal })
+/** What happened inside a session, in order (answers, hints, tiredness, decisions). */
+export const listSessionEvents = (pid: string, sessionId: string, signal?: AbortSignal) =>
+  apiRequest<SessionEvent[]>(`${base(pid)}/sessions/${encodeURIComponent(sessionId)}/events`, {
+    signal,
+  })

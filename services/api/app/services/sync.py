@@ -15,6 +15,7 @@ Every pushed mutation carries a client `mutation_id`. The server stores a receip
 per mutation, so replays return the original outcome instead of re-applying.
 """
 
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import or_, select
@@ -25,12 +26,15 @@ from app.core.errors import AppError
 from app.core.time import utc_now
 from app.models.activities import (
     ActivityDefinition,
+    ActivityEvent,
     ActivitySession,
     PersonalizationState,
 )
-from app.models.care import ConversationRecord, RoutineItem
+from app.models.care import CaregiverObservation, ConversationRecord, RoutineItem
 from app.models.enums import (
     MemoryStatus,
+    ObservationCategory,
+    ObservationStatus,
     RecordSource,
     SessionEndReason,
     SyncEntity,
@@ -44,6 +48,8 @@ from app.schemas.care import RoutineOut
 from app.schemas.memories import MemoryOut, MemoryRelationshipOut
 from app.schemas.sync import (
     ConversationMutation,
+    EventMutation,
+    FatigueReportMutation,
     MutationResult,
     PersonalizationMutation,
     ResultMutation,
@@ -51,7 +57,7 @@ from app.schemas.sync import (
     SyncChangeOut,
 )
 from app.services import activities
-from app.services.changes import log_change
+from app.services.changes import log_change, log_fatigue_change
 
 PULL_PAGE_SIZE = 500
 
@@ -152,6 +158,77 @@ def _apply_personalization(db: Session, patient_id: str, m: PersonalizationMutat
     log_change(db, SyncEntity.PERSONALIZATION_STATE, state.id, SyncOperation.UPSERT, patient_id)
 
 
+def _apply_event(db: Session, patient_id: str, m: EventMutation):
+    """Append one activity event. Deduplicated by event ID, so a re-sent event (for
+    example after a lost response with a new mutation ID) is never stored twice."""
+    data = m.data
+    existing = db.get(ActivityEvent, data.id)
+    if existing is not None:
+        if existing.patient_id != patient_id:
+            raise _Outcome(SyncMutationStatus.REJECTED, "ID already in use")
+        raise _Outcome(SyncMutationStatus.DUPLICATE, "Event already stored")
+    session = db.get(ActivitySession, data.session_id)
+    if session is None or session.patient_id != patient_id:
+        raise _Outcome(SyncMutationStatus.REJECTED, "Unknown session; push the session first")
+    if db.get(ActivityDefinition, data.activity_id) is None:
+        raise _Outcome(SyncMutationStatus.REJECTED, "Unknown activity")
+    # Memory references: an ID of a memory deleted since (offline play) is kept; an ID
+    # that belongs to ANOTHER patient is refused.
+    refs = {*data.data.memory_ids, *([data.data.memory_id] if data.data.memory_id else [])}
+    if refs and db.scalar(
+        select(MemoryItem.id)
+        .where(MemoryItem.id.in_(refs), MemoryItem.patient_id != patient_id)
+        .limit(1)
+    ):
+        raise _Outcome(SyncMutationStatus.REJECTED, "Memory belongs to another patient")
+    db.add(
+        ActivityEvent(
+            id=data.id,
+            patient_id=patient_id,
+            session_id=data.session_id,
+            activity_id=data.activity_id,
+            seq=data.seq,
+            event_type=data.event_type,
+            occurred_at=data.occurred_at,
+            round_index=data.round_index,
+            data=data.data.model_dump(exclude_none=True, exclude_defaults=True),
+        )
+    )
+
+
+FATIGUE_NOTES = {
+    "mild": "Reported on the patient's phone by a caregiver: a little tired.",
+    "severe": "Reported on the patient's phone by a caregiver: very tired.",
+}
+
+
+def _apply_fatigue_report(db: Session, patient_id: str, m: FatigueReportMutation, user_id: str):
+    """Store a caregiver's report from the phone as a fatigue observation (fixed note)."""
+    data = m.data
+    if data.reported_at > utc_now() + timedelta(minutes=5):
+        raise _Outcome(SyncMutationStatus.REJECTED, "reported_at cannot be in the future")
+    existing = db.get(CaregiverObservation, data.id)
+    if existing is not None:
+        if existing.patient_id != patient_id:
+            raise _Outcome(SyncMutationStatus.REJECTED, "ID already in use")
+        raise _Outcome(SyncMutationStatus.DUPLICATE, "Report already stored")
+    obs = CaregiverObservation(
+        id=data.id,
+        patient_id=patient_id,
+        author_id=user_id,
+        observed_at=data.reported_at,
+        category=ObservationCategory.FATIGUE,
+        fatigue_level=data.level,
+        note=FATIGUE_NOTES[data.level.value],
+        source=RecordSource.DEVICE,
+        status=ObservationStatus.OPEN,
+        version=1,
+    )
+    db.add(obs)
+    db.flush()
+    log_fatigue_change(db, obs)
+
+
 def _entity_id(m: Any) -> str:
     if isinstance(m, PersonalizationMutation):
         return m.data.activity_id
@@ -193,6 +270,10 @@ def push(
                     _apply_conversation(db, patient_id, m)
                 case PersonalizationMutation():
                     _apply_personalization(db, patient_id, m)
+                case EventMutation():
+                    _apply_event(db, patient_id, m)
+                case FatigueReportMutation():
+                    _apply_fatigue_report(db, patient_id, m, user_id)
             db.flush()
             savepoint.commit()
         except _Outcome as outcome:
@@ -256,6 +337,17 @@ def _payload(db: Session, change: SyncChange) -> dict[str, Any] | None:
             "rules_version": state.rules_version,
             "state": state.state,
             "state_updated_at": state.state_updated_at.isoformat(),
+        }
+    if change.entity_type is SyncEntity.FATIGUE_REPORT:
+        obs = db.get(CaregiverObservation, change.entity_id)
+        if obs is None or obs.category is not ObservationCategory.FATIGUE:
+            return None
+        # Level, time and where it came from. Never the note text.
+        return {
+            "id": obs.id,
+            "level": obs.fatigue_level.value if obs.fatigue_level else None,
+            "observed_at": obs.observed_at.isoformat(),
+            "source": obs.source.value,
         }
     model, schema = _PULL_MODELS[change.entity_type]
     row = db.get(model, change.entity_id)

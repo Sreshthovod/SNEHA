@@ -17,6 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base, CreatedAtMixin, IdMixin, TimestampMixin
 from app.db.types import UTCDateTime, str_enum
 from app.models.enums import (
+    ActivityEventType,
     ActivityType,
     Engagement,
     RecommendationAction,
@@ -182,3 +183,36 @@ class ActivityRecommendation(IdMixin, CreatedAtMixin, Base):
     fallback_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     fallback_reason: Mapped[str | None] = mapped_column(String(64))
     request_context: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+
+class ActivityEvent(IdMixin, CreatedAtMixin, Base):
+    """One event inside an activity run, recorded on the device (migration 0009).
+
+    Append-only and idempotent by the device-generated `id`. `data` holds only small,
+    schema-validated values (see schemas/events.py); never free text.
+    """
+
+    __tablename__ = "activity_events"
+    __table_args__ = (
+        CheckConstraint("seq >= 0", name="seq_non_negative"),
+        CheckConstraint("round_index IS NULL OR round_index >= 0", name="round_non_negative"),
+        Index("ix_activity_events_session_seq", "session_id", "seq"),
+        Index("ix_activity_events_patient_occurred", "patient_id", "occurred_at"),
+    )
+
+    patient_id: Mapped[str] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("activity_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    activity_id: Mapped[str] = mapped_column(
+        ForeignKey("activity_definitions.id", ondelete="RESTRICT"), nullable=False
+    )
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[ActivityEventType] = mapped_column(
+        str_enum(ActivityEventType, "activity_event_type"), nullable=False
+    )
+    occurred_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+    round_index: Mapped[int | None] = mapped_column(Integer)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)

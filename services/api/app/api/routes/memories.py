@@ -17,6 +17,7 @@ from app.core.time import utc_now
 from app.models.enums import (
     ConsentType,
     FilePurpose,
+    MemoryKind,
     MemoryStatus,
     RecordSource,
     SyncEntity,
@@ -193,6 +194,10 @@ def correct_memory(
                 replaced = None
     for field, value in changes.items():
         setattr(memory, field, value)
+    if memory.kind is not MemoryKind.PERSON:
+        if changes.get("relationship"):
+            raise AppError(422, "validation_error", "relationship is only for person memories.")
+        memory.relationship = None  # a memory that stops being a person loses it
     memory.version += 1
     if body.correction_note:
         memory.review_note = body.correction_note

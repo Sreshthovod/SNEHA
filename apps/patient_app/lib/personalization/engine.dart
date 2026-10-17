@@ -1,7 +1,7 @@
 /// On-device port of the deterministic personalization engine.
 ///
 /// Source of truth: services/api/app/personalization/engine.py
-/// (ALGORITHM_VERSION 1.0.0). This file must give the SAME decisions for the
+/// (ALGORITHM_VERSION 1.2.0). This file must give the SAME decisions for the
 /// same inputs; test/personalization/engine_parity_test.dart replays scenarios
 /// whose expected outputs were produced by the Python engine
 /// (tool/engine_parity/generate.py → test/fixtures/engine_parity.json).
@@ -13,13 +13,14 @@ library;
 
 import 'engine_config.dart';
 
-const algorithmVersion = '1.0.0';
+const algorithmVersion = '1.2.0';
 
 enum Reason {
   stopRequested('STOP_REQUESTED'),
   fatigueReportedBreak('FATIGUE_REPORTED_BREAK'),
   recentFatigueFeedback('RECENT_FATIGUE_FEEDBACK'),
   recentFatigueObservation('RECENT_FATIGUE_OBSERVATION'),
+  caregiverSevereFatigue('CAREGIVER_REPORTED_SEVERE_FATIGUE'),
   lowEffortForFatigue('LOW_EFFORT_FOR_FATIGUE'),
   coldStartDefault('COLD_START_DEFAULT'),
   interestMatch('INTEREST_MATCH'),
@@ -41,7 +42,11 @@ enum Reason {
   dislikedExcluded('DISLIKED_ACTIVITY_EXCLUDED'),
   offlineContentFilter('LIMITED_TO_AVAILABLE_OFFLINE_CONTENT'),
   languageContentFallback('LANGUAGE_CONTENT_FALLBACK'),
-  noAvailableActivity('NO_AVAILABLE_ACTIVITY');
+  noAvailableActivity('NO_AVAILABLE_ACTIVITY'),
+  // 1.2.0: support that follows what the person needed last time.
+  hintSupport('HINT_SUPPORT_AFTER_HINT_USE'),
+  easierAlternative('EASIER_ALTERNATIVE_AFTER_STRUGGLE'),
+  readAloudFirst('INSTRUCTIONS_READ_ALOUD_FIRST');
 
   const Reason(this.code);
   final String code;
@@ -89,6 +94,7 @@ class ResultFact {
     this.engagement,
     this.fatigueReported = false,
     this.meanResponseMs,
+    this.instructionsRepeated,
   });
 
   final String id;
@@ -103,6 +109,9 @@ class ResultFact {
   final String? engagement;
   final bool fatigueReported;
   final double? meanResponseMs;
+
+  /// Times "Read aloud" was pressed during the run (1.2.0); null = not recorded.
+  final int? instructionsRepeated;
 }
 
 class ObservationFact {
@@ -110,11 +119,15 @@ class ObservationFact {
     required this.id,
     required this.category,
     required this.observedAt,
+    this.fatigueLevel,
   });
 
   final String id;
   final String category;
   final DateTime observedAt;
+
+  /// Fatigue observations only: `mild` | `severe` | null (not given).
+  final String? fatigueLevel;
 }
 
 class SessionEndFact {
@@ -204,7 +217,16 @@ class Support {
 }
 
 class DifficultyDecision {
-  DifficultyDecision(this.level, this.reasons, this.supporting, this.hints);
+  DifficultyDecision(
+    this.level,
+    this.reasons,
+    this.supporting,
+    this.hints, [
+    this.trailingStruggles = 0,
+  ]);
+
+  /// Consecutive struggles at the end of the history (1.2.0).
+  final int trailingStruggles;
 
   final int level;
   final List<Reason> reasons;
@@ -225,6 +247,7 @@ class EngineRecommendation {
     this.fallbackUsed = false,
     this.fallbackReason,
     this.breakMinutes,
+    this.readAloudFirst = false,
   });
 
   final EngineAction action;
@@ -238,6 +261,9 @@ class EngineRecommendation {
   final bool fallbackUsed;
   final String? fallbackReason;
   final int? breakMinutes;
+
+  /// 1.2.0: read each question aloud when it appears (if read-aloud is on).
+  final bool readAloudFirst;
 
   /// Reason codes in first-seen order, without duplicates.
   List<String> get reasonCodes {
@@ -389,7 +415,66 @@ DifficultyDecision decideDifficulty(
   }
   final hints = trailingStruggles >= rules.hintsAfterStruggles;
   if (hints) reasons.add(Reason.hintsOffered);
-  return DifficultyDecision(level, reasons, supporting, hints);
+  return DifficultyDecision(
+    level,
+    reasons,
+    supporting,
+    hints,
+    trailingStruggles,
+  );
+}
+
+/// This activity's recent results that needed many hints, if they form a
+/// pattern (1.2.0).
+List<ResultFact> hintHeavy(List<ResultFact> results, EngineConfig cfg) {
+  final rules = cfg.support;
+  final finished = results.where((r) => !r.abandoned).toList();
+  final recent = finished.length > rules.hintWindow
+      ? finished.sublist(finished.length - rules.hintWindow)
+      : finished;
+  final heavy = recent
+      .where((r) => r.hints >= rules.hintHeavyMinHints)
+      .toList();
+  return heavy.length >= rules.hintHeavyResults ? heavy : const [];
+}
+
+/// The latest struggles if the person is struggling at this activity's
+/// easiest level (1.2.0).
+List<ResultFact> strugglingAtEasiest(
+  ActivityFact activity,
+  List<ResultFact> results,
+  EngineConfig cfg,
+) {
+  final decision = decideDifficulty(activity, results, cfg);
+  final needed = cfg.support.struggleAtEasiestResults;
+  if (decision.level == activity.minDifficulty &&
+      decision.trailingStruggles >= needed) {
+    final scored = results
+        .where((r) => r.score != null && !r.abandoned)
+        .toList();
+    return scored.sublist(scored.length - needed);
+  }
+  return const [];
+}
+
+/// Recent results where "Read aloud" was pressed often enough to read
+/// questions first (1.2.0).
+List<ResultFact> readAloudFirstResults(
+  List<ResultFact> results,
+  EngineConfig cfg,
+) {
+  final rules = cfg.support;
+  final recent = results.length > rules.instructionWindow
+      ? results.sublist(results.length - rules.instructionWindow)
+      : results;
+  final pressed = recent
+      .where((r) => (r.instructionsRepeated ?? 0) > 0)
+      .toList();
+  final total = recent.fold<int>(
+    0,
+    (sum, r) => sum + (r.instructionsRepeated ?? 0),
+  );
+  return total >= rules.readAloudAfterRepeats ? pressed : const [];
 }
 
 // ---------------------------------------------------------------- selection
@@ -412,7 +497,7 @@ _fatigueSignals(EngineInput inp, EngineConfig cfg) {
   final reasons = <Reason>[];
   final supporting = <Support>[];
   final latest = inp.results.isEmpty ? null : inp.results.last;
-  final explicitNow =
+  var explicitNow =
       inp.fatigueReported ||
       (latest != null &&
           latest.fatigueReported &&
@@ -458,12 +543,19 @@ _fatigueSignals(EngineInput inp, EngineConfig cfg) {
   for (final o in inp.observations) {
     if (o.category == 'fatigue' &&
         _within(inp.now, o.observedAt, rules.observationWindowHours)) {
-      reasons.add(Reason.recentFatigueObservation);
+      if (o.fatigueLevel == 'severe') {
+        // A caregiver said "very tired": a rest, not another activity.
+        explicitNow = true;
+        reasons.add(Reason.caregiverSevereFatigue);
+      } else {
+        reasons.add(Reason.recentFatigueObservation);
+      }
+      final level = o.fatigueLevel == null ? '' : ' (${o.fatigueLevel})';
       supporting.add(
         Support(
           'caregiver_observation',
           o.id,
-          'caregiver noted tiredness at ${_hhmm(o.observedAt)} UTC',
+          'caregiver noted tiredness at ${_hhmm(o.observedAt)} UTC$level',
         ),
       );
     }
@@ -605,6 +697,16 @@ EngineRecommendation recommend(EngineInput inp, [EngineConfig? config]) {
   }
   final interests = {for (final t in inp.interests) t.toLowerCase()};
 
+  // Repeated struggles at an activity's easiest level: prefer another one.
+  final hardAtEasiest = {
+    for (final a in candidates)
+      a.id: strugglingAtEasiest(
+        a,
+        inp.results.where((r) => r.activityId == a.id).toList(),
+        cfg,
+      ),
+  };
+
   ({int score, List<Reason> why, List<Support> sup}) score(ActivityFact a) {
     var s = 0;
     final why = <Reason>[];
@@ -669,6 +771,9 @@ EngineRecommendation recommend(EngineInput inp, [EngineConfig? config]) {
     if (a.id == lastActivity) s -= sel.repeatLastPenalty;
     s -= sel.repeatRecentPenalty * recentIds.where((id) => id == a.id).length;
     if (avoid.contains(a.id)) s -= 10000;
+    if (hardAtEasiest[a.id]!.isNotEmpty) {
+      s -= cfg.support.struggleAtEasiestPenalty;
+    }
     return (score: s, why: why, sup: sup);
   }
 
@@ -721,6 +826,17 @@ EngineRecommendation recommend(EngineInput inp, [EngineConfig? config]) {
     reasons.add(Reason.coldStartDefault);
     fallbackReason ??= 'no_history';
   }
+  final avoided = candidates
+      .where((a) => hardAtEasiest[a.id]!.isNotEmpty && a.id != chosen.id)
+      .toList();
+  if (avoided.isNotEmpty) {
+    reasons.add(Reason.easierAlternative);
+    supporting.addAll([
+      for (final a in avoided)
+        for (final r in hardAtEasiest[a.id]!)
+          Support('activity_result', r.id, 'struggled at the easiest level'),
+    ]);
+  }
 
   // 6. Difficulty.
   final decision = decideDifficulty(
@@ -734,6 +850,29 @@ EngineRecommendation recommend(EngineInput inp, [EngineConfig? config]) {
   if (tired) {
     difficulty = chosen.minDifficulty;
     reasons.add(Reason.lowEffortForFatigue);
+  }
+  final heavy = hintHeavy(
+    inp.results.where((r) => r.activityId == chosen.id).toList(),
+    cfg,
+  );
+  if (heavy.isNotEmpty) {
+    reasons.add(Reason.hintSupport);
+    supporting.addAll([
+      for (final r in heavy)
+        Support('activity_result', r.id, '${r.hints} hints used'),
+    ]);
+  }
+  final repeated = readAloudFirstResults(inp.results, cfg);
+  if (repeated.isNotEmpty) {
+    reasons.add(Reason.readAloudFirst);
+    supporting.addAll([
+      for (final r in repeated)
+        Support(
+          'activity_result',
+          r.id,
+          'question read aloud ${r.instructionsRepeated}x',
+        ),
+    ]);
   }
 
   final content =
@@ -766,11 +905,12 @@ EngineRecommendation recommend(EngineInput inp, [EngineConfig? config]) {
     difficulty: difficulty,
     reasons: reasons,
     supporting: unique,
-    hintsEnabled: decision.hints || tired,
+    hintsEnabled: decision.hints || tired || heavy.isNotEmpty,
     memoryItemIds: content.memoryItemIds,
     routineItemIds: content.routineItemIds,
     fallbackUsed: fallbackReason != null,
     fallbackReason: fallbackReason,
     breakMinutes: fatigue.explicitNow ? cfg.fatigue.breakMinutes : null,
+    readAloudFirst: repeated.isNotEmpty,
   );
 }

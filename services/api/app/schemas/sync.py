@@ -5,6 +5,7 @@ from pydantic import Field, StringConstraints
 
 from app.models.enums import (
     ConversationProviderUsed,
+    FatigueLevel,
     Language,
     SessionEndReason,
     SessionStatus,
@@ -14,6 +15,7 @@ from app.models.enums import (
 )
 from app.schemas.activities import ResultCreate
 from app.schemas.base import RecordId, RequestModel, ResponseModel, UtcDatetime
+from app.schemas.events import EventPayload
 
 MAX_MUTATIONS_PER_PUSH = 200
 IntentLabel = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,39}$")]
@@ -84,8 +86,36 @@ class PersonalizationMutation(RequestModel):
     data: PersonalizationPayload
 
 
+class FatigueReportPayload(RequestModel):
+    """A caregiver's tiredness report made on the patient's phone. Level and time only:
+    there is deliberately no free-text field."""
+
+    id: RecordId
+    level: FatigueLevel
+    reported_at: UtcDatetime
+
+
+class FatigueReportMutation(RequestModel):
+    mutation_id: RecordId
+    entity_type: Literal[SyncEntity.FATIGUE_REPORT]
+    operation: Literal[SyncOperation.UPSERT] = SyncOperation.UPSERT
+    data: FatigueReportPayload
+
+
+class EventMutation(RequestModel):
+    mutation_id: RecordId
+    entity_type: Literal[SyncEntity.ACTIVITY_EVENT]
+    operation: Literal[SyncOperation.UPSERT] = SyncOperation.UPSERT
+    data: EventPayload
+
+
 Mutation = Annotated[
-    SessionMutation | ResultMutation | ConversationMutation | PersonalizationMutation,
+    SessionMutation
+    | ResultMutation
+    | ConversationMutation
+    | PersonalizationMutation
+    | EventMutation
+    | FatigueReportMutation,
     Field(discriminator="entity_type"),
 ]
 

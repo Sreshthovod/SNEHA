@@ -3,15 +3,28 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings.dart';
+import '../../ui/theme.dart';
 import '../../ui/widgets.dart';
 import '../activity.dart';
 
 class PairCard {
-  const PairCard(this.symbolId, this.label, this.icon);
+  const PairCard(
+    this.symbolId,
+    this.label,
+    this.icon, {
+    this.imagePath,
+    this.memoryId,
+  });
 
   final String symbolId;
   final String label;
   final IconData icon;
+
+  /// A cached, approved family photo shown instead of [icon].
+  final String? imagePath;
+
+  /// The approved memory this card shows (null for everyday pictures).
+  final String? memoryId;
 }
 
 enum FlipResult { ignored, firstOfPair, match, mismatch }
@@ -77,6 +90,12 @@ class PairsRoundSpec extends RoundSpec {
 
   @override
   int get maxHints => symbols.length - 1;
+
+  @override
+  List<String> get memoryIds => [
+    for (final c in symbols)
+      if (c.memoryId != null) c.memoryId!,
+  ];
 
   @override
   String hintMessage(AppStrings s, int hintNumber) => s.t('hint_pairs');
@@ -146,8 +165,8 @@ class _PairsViewState extends State<_PairsView> {
           crossAxisCount: _board.cards.length > 8 ? 4 : 3,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
           children: [
             for (var i = 0; i < _board.cards.length; i++)
               _CardTile(
@@ -165,8 +184,7 @@ class _PairsViewState extends State<_PairsView> {
         if (_board.complete) ...[
           NoticeBanner(
             message: s.t('runner_correct'),
-            icon: Icons.check_circle,
-            positive: true,
+            tone: NoticeTone.positive,
           ),
           BigButton(
             label: s.t('common_continue'),
@@ -201,7 +219,26 @@ class _CardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final highContrast = SnehaTheme.isHighContrast(theme);
+    // Face down: soft sage with a calm motif. Face up: white with the
+    // picture. Matched: green with a check mark and a thicker edge.
+    final Color bg;
+    final BorderSide side;
+    if (matched) {
+      bg = scheme.primaryContainer;
+      side = BorderSide(color: scheme.primary, width: 3);
+    } else if (visible) {
+      bg = scheme.surfaceContainerLowest;
+      side = BorderSide(color: scheme.outline, width: highContrast ? 3 : 2);
+    } else {
+      bg = scheme.secondaryContainer;
+      side = BorderSide(
+        color: highContrast ? scheme.outline : scheme.outlineVariant,
+        width: highContrast ? 3 : 2,
+      );
+    }
     return Semantics(
       button: true,
       label: visible
@@ -209,14 +246,10 @@ class _CardTile extends StatelessWidget {
           : strings.t('game_card_hidden', {'number': index + 1}),
       excludeSemantics: true,
       child: Material(
-        color: matched
-            ? scheme.primaryContainer
-            : visible
-            ? scheme.surface
-            : scheme.primary,
+        color: bg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: scheme.outline, width: 2),
+          side: side,
         ),
         child: InkWell(
           onTap: onTap,
@@ -226,21 +259,53 @@ class _CardTile extends StatelessWidget {
               minWidth: kTileMinSize,
               minHeight: kTileMinSize,
             ),
-            child: AnimatedSwitcher(
-              duration: duration,
-              child: visible
-                  ? Icon(
-                      card.icon,
-                      key: const ValueKey('face'),
-                      size: 48,
-                      color: scheme.onSurface,
-                    )
-                  : Icon(
-                      Icons.question_mark,
-                      key: const ValueKey('back'),
-                      size: 40,
-                      color: scheme.onPrimary,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                AnimatedSwitcher(
+                  duration: duration,
+                  child: visible && card.imagePath != null
+                      ? Padding(
+                          key: const ValueKey('photo'),
+                          padding: const EdgeInsets.all(6),
+                          // The family photo fills the card.
+                          child: LayoutBuilder(
+                            builder: (context, box) => MemoryPhoto(
+                              path: card.imagePath,
+                              semanticLabel: card.label,
+                              height: box.maxHeight.isFinite
+                                  ? box.maxHeight
+                                  : kTileMinSize,
+                            ),
+                          ),
+                        )
+                      : visible
+                      ? Icon(
+                          card.icon,
+                          key: const ValueKey('face'),
+                          size: 48,
+                          color: matched
+                              ? scheme.onPrimaryContainer
+                              : scheme.onSurface,
+                        )
+                      : Icon(
+                          Icons.spa_outlined,
+                          key: const ValueKey('back'),
+                          size: 36,
+                          color: scheme.primary,
+                        ),
+                ),
+                if (matched)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Icon(
+                      Icons.check_circle,
+                      size: 22,
+                      color: scheme.primary,
                     ),
+                  ),
+              ],
             ),
           ),
         ),

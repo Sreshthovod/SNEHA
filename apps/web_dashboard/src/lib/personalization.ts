@@ -10,6 +10,7 @@ export const REASON_LABELS: Record<string, string> = {
   FATIGUE_REPORTED_BREAK: 'They said they were tired, so a rest was offered first.',
   RECENT_FATIGUE_FEEDBACK: 'Tiredness was mentioned recently.',
   RECENT_FATIGUE_OBSERVATION: 'A caregiver noted tiredness recently.',
+  CAREGIVER_REPORTED_SEVERE_FATIGUE: 'A caregiver said they were very tired, so a rest comes first.',
   LOW_EFFORT_FOR_FATIGUE: 'A gentle activity at the easiest level was chosen because of tiredness.',
   COLD_START_DEFAULT: 'No activities have been recorded yet, so a standard first choice was used.',
   INTEREST_MATCH: 'It matches interests your family approved.',
@@ -32,6 +33,9 @@ export const REASON_LABELS: Record<string, string> = {
   LIMITED_TO_AVAILABLE_OFFLINE_CONTENT: 'Only activities available on the phone were considered.',
   LANGUAGE_CONTENT_FALLBACK: 'There was no content in their language, so another language was used.',
   NO_AVAILABLE_ACTIVITY: 'No suitable activity was available.',
+  HINT_SUPPORT_AFTER_HINT_USE: 'Recent tries needed several hints, so hints come sooner. The level stays the same.',
+  EASIER_ALTERNATIVE_AFTER_STRUGGLE: 'Another activity was hard even at its easiest level, so a gentler one was chosen.',
+  INSTRUCTIONS_READ_ALOUD_FIRST: 'They often asked to hear questions again, so each question is read aloud first.',
 }
 
 export function reasonLabel(code: string): string {

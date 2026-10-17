@@ -7,6 +7,7 @@ import '../../activities/registry.dart';
 import '../../app.dart';
 import '../../app_services.dart';
 import '../../conversation/offline_helper.dart';
+import '../../core/connectivity/server_status.dart';
 import '../../data/api/api_client.dart';
 import '../../data/api/models.dart';
 import '../../data/api/stage7_models.dart';
@@ -97,6 +98,11 @@ class _ConversationScreenState extends State<ConversationScreen> {
   bool _recorded = false;
   bool _busy = false;
 
+  // Presentation only: keep the newest message in view.
+  final _scroll = ScrollController();
+  final _latestKey = GlobalKey();
+  int _shownMessages = 0;
+
   VoiceAvailability _voice = const VoiceAvailability.unavailable(
     'speech_input_unavailable',
   );
@@ -123,6 +129,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
   void dispose() {
     if (_listening) _services.speechInput.cancel();
     _input.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -287,6 +294,21 @@ class _ConversationScreenState extends State<ConversationScreen> {
   Widget build(BuildContext context) {
     final s = context.s;
     final theme = Theme.of(context);
+    if (_messages.length != _shownMessages) {
+      _shownMessages = _messages.length;
+      final still = MediaQuery.disableAnimationsOf(context);
+      // Bring the newest message to the top of the view, so the answer is
+      // read first and anything that comes with it follows below.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = _latestKey.currentContext;
+        if (target == null || !target.mounted) return;
+        Scrollable.ensureVisible(
+          target,
+          duration: still ? Duration.zero : const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+      });
+    }
     final quick = <(String, HelperIntent)>[
       (s.t('talk_quick_hello'), HelperIntent.greeting),
       (s.t('talk_quick_time'), HelperIntent.askTime),
@@ -311,17 +333,25 @@ class _ConversationScreenState extends State<ConversationScreen> {
             children: [
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.all(20),
+                  controller: _scroll,
+                  padding: EdgeInsets.all(pagePadding(context)),
                   children: [
-                    NoticeBanner(message: s.t('talk_label_online')),
-                    Text(s.t('talk_label'), style: theme.textTheme.bodyMedium),
-                    Text(
-                      s.t('talk_privacy'),
-                      style: theme.textTheme.bodyMedium,
+                    // One note that matches what works right now.
+                    ListenableBuilder(
+                      listenable: _services.serverStatus,
+                      builder: (context, _) => NoticeBanner(
+                        key: const ValueKey('talk_note'),
+                        message:
+                            '${s.t(_services.serverStatus.connection == ServerConnection.online ? 'talk_label_online' : 'talk_label')} '
+                            '${s.t('talk_privacy')}',
+                      ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     for (final m in _messages) ...[
-                      _Bubble(message: m),
+                      KeyedSubtree(
+                        key: identical(m, _messages.last) ? _latestKey : null,
+                        child: _Bubble(message: m),
+                      ),
                       if (!m.fromUser) _Extras(state: this, message: m),
                     ],
                     if (_busy)
@@ -342,27 +372,40 @@ class _ConversationScreenState extends State<ConversationScreen> {
                           ],
                         ),
                       ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final (label, intent) in quick)
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(minHeight: 64),
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size(64, 64),
-                              ),
-                              onPressed: _busy
-                                  ? null
-                                  : () => _send(label, intent: intent),
-                              child: Text(label),
-                            ),
-                          ),
-                      ],
-                    ),
                   ],
+                ),
+              ),
+              // Quick replies stay in one place, just above the typing area,
+              // so they never move as the conversation grows.
+              SizedBox(
+                height:
+                    16 +
+                    (MediaQuery.textScalerOf(context).scale(20 * 1.2) + 20)
+                        .clamp(64.0, 200.0),
+                child: ListView.separated(
+                  key: const ValueKey('talk_quick_replies'),
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  itemCount: quick.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                  itemBuilder: (context, i) {
+                    final (label, intent) = quick[i];
+                    return OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(64, 64),
+                        textStyle: theme.textTheme.labelMedium,
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        shape: const StadiumBorder(),
+                      ),
+                      onPressed: _busy
+                          ? null
+                          : () => _send(label, intent: intent),
+                      child: Text(label),
+                    );
+                  },
                 ),
               ),
               if (_voiceMessage != null || _transcribing)
@@ -374,39 +417,59 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     style: theme.textTheme.bodyLarge,
                   ),
                 ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    _MicButton(
-                      voice: _voice,
-                      listening: _listening,
-                      busy: _transcribing || _busy,
-                      onPressed: _toggleVoice,
-                    ),
-                    Expanded(
-                      child: TextField(
+              // The typing field gets the full width so the words stay
+              // visible at large text sizes; voice and Send sit below it.
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerLow,
+                  border: Border(
+                    top: BorderSide(color: theme.colorScheme.outlineVariant),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
                         controller: _input,
                         style: theme.textTheme.bodyLarge,
                         textInputAction: TextInputAction.send,
                         onSubmitted: _send,
+                        minLines: 1,
+                        maxLines: 3,
                         decoration: InputDecoration(
                           labelText: s.t('talk_input'),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 120,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(64, 64),
-                        ),
-                        onPressed: _busy ? null : () => _send(_input.text),
-                        child: Text(s.t('talk_send')),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _MicButton(
+                            voice: _voice,
+                            listening: _listening,
+                            busy: _transcribing || _busy,
+                            onPressed: _toggleVoice,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _busy
+                                  ? null
+                                  : () => _send(_input.text),
+                              icon: const Icon(Icons.send),
+                              label: Text(s.t('talk_send')),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -476,10 +539,17 @@ class _Extras extends StatelessWidget {
       children: [
         Text(
           s.t(m.online ? 'talk_source_online' : 'talk_source_offline'),
-          style: theme.textTheme.bodyMedium,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
         if (m.offlineNote)
-          Text(s.t('talk_offline_note'), style: theme.textTheme.bodyMedium),
+          Text(
+            s.t('talk_offline_note'),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         if (m.safety != null) ...[
           const SizedBox(height: 8),
           NoticeBanner(message: m.safety!),
@@ -511,7 +581,7 @@ class _Extras extends StatelessWidget {
           const SizedBox(height: 8),
           SnehaCard(
             title: s.t('talk_suggest_heading'),
-            icon: Icons.auto_awesome_outlined,
+            icon: Icons.spa_outlined,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -594,17 +664,24 @@ class _Bubble extends StatelessWidget {
       child: Semantics(
         label:
             '${user ? s.t('talk_you') : s.t('talk_helper')}: ${message.text}',
+        // New helper replies are announced.
+        liveRegion: !user,
         excludeSemantics: true,
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 6),
           padding: const EdgeInsets.all(16),
           constraints: const BoxConstraints(maxWidth: 520),
           decoration: BoxDecoration(
-            color: user
-                ? scheme.primaryContainer
-                : scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: scheme.outline),
+            color: user ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(18),
+              topRight: const Radius.circular(18),
+              bottomLeft: Radius.circular(user ? 18 : 4),
+              bottomRight: Radius.circular(user ? 4 : 18),
+            ),
+            border: Border.all(
+              color: user ? scheme.primaryContainer : scheme.outlineVariant,
+            ),
           ),
           child: Text(
             message.text,

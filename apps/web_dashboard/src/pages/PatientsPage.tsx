@@ -3,36 +3,50 @@ import { Link, useNavigate } from 'react-router-dom'
 import { createPatient, listPatients } from '../api/patients'
 import type { Language } from '../api/types'
 import { Button } from '../components/ui/Button'
-import { Card } from '../components/ui/Card'
 import { Dialog } from '../components/ui/Dialog'
 import { SelectField, TextField } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ActionError, EmptyState, ErrorState, Loading } from '../components/ui/States'
 import { useAction, useAsync } from '../hooks/useAsync'
 import { LANGUAGE_LABELS, options } from '../lib/labels'
+import { initials } from '../lib/people'
 
 export function PatientsPage() {
   const patients = useAsync((signal) => listPatients(signal), [])
   const [open, setOpen] = useState(false)
   return (
     <>
-      <PageHeader title="People I care for" />
-      <p>
-        <Button onClick={() => setOpen(true)}>Add a person</Button>
-      </p>
+      <PageHeader
+        title="People I care for"
+        lede="Open a person's record to see their memories, notes, activity and sharing settings."
+        actions={<Button onClick={() => setOpen(true)}>Add a person</Button>}
+      />
       {patients.status === 'error' && <ErrorState error={patients.error} onRetry={patients.reload} />}
       {patients.status === 'loading' && !patients.data && <Loading />}
-      {patients.data?.length === 0 && <EmptyState title="No one added yet" />}
-      <ul className="card-list">
+      {patients.data?.length === 0 && (
+        <EmptyState title="No one added yet">
+          <p>Add the person you care for to start building their Memory Bank.</p>
+        </EmptyState>
+      )}
+      <ul className="card-grid">
         {patients.data?.map((p) => (
           <li key={p.id}>
-            <Card title={p.display_name} headingLevel={2}>
-              <p>
-                {LANGUAGE_LABELS[p.preferred_language]} ·{' '}
-                {p.has_paired_device ? 'Phone connected' : 'No phone connected yet'}
-              </p>
-              <Link to={`/app/patients/${p.id}`}>Open profile</Link>
-            </Card>
+            <section className="card person-card" aria-labelledby={`person-card-${p.id}`}>
+              <div className="person-card__identity">
+                <span className="app-user__avatar" aria-hidden="true">
+                  {initials(p.display_name)}
+                </span>
+                <div>
+                  <h2 id={`person-card-${p.id}`}>{p.display_name}</h2>
+                  <p className="person-card__meta">
+                    {LANGUAGE_LABELS[p.preferred_language]} · {p.has_paired_device ? 'Phone connected' : 'No phone connected yet'}
+                  </p>
+                </div>
+              </div>
+              <Link to={`/app/patients/${p.id}`} className="button button--secondary" aria-label={`Open profile: ${p.display_name}`}>
+                Open profile
+              </Link>
+            </section>
           </li>
         ))}
       </ul>

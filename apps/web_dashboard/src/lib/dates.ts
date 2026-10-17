@@ -33,6 +33,13 @@ export function formatDate(date: string): string {
   )
 }
 
+/** Short day label for charts: "12 Oct" (unambiguous, unlike "10-12"). */
+export function formatDayShort(date: string): string {
+  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
+    new Date(`${date}T00:00:00Z`),
+  )
+}
+
 /** Convert a <input type="datetime-local"> value to an ISO string with offset. */
 export function localInputToIso(value: string): string {
   return new Date(value).toISOString()

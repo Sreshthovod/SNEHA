@@ -54,6 +54,9 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
+        actionsOverflowDirection: VerticalDirection.up,
+        actionsOverflowButtonSpacing: 8,
         title: Text(
           s.t('privacy_remove_title', {'name': _profile.greetingName}),
         ),
@@ -66,7 +69,9 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
               const SizedBox(height: 12),
               Text(
                 s.t('privacy_remove_unsynced', {'count': unsynced}),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: Theme.of(
+                  ctx,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ],
@@ -77,6 +82,10 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
             child: Text(s.t('common_cancel')),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(s.t('privacy_remove_confirm')),
           ),
@@ -163,6 +172,7 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
                   NoticeBanner(
                     message: s.t('privacy_refresh_failed'),
                     icon: Icons.cloud_off,
+                    tone: NoticeTone.problem,
                   ),
                 BigButton(
                   label: _refreshing
@@ -175,11 +185,12 @@ class _PrivacyScreenState extends State<PrivacyScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
+          // Destructive, so set apart and marked; it always asks first.
           BigButton(
             label: s.t('privacy_remove'),
             icon: Icons.person_remove_outlined,
-            secondary: true,
+            danger: true,
             onPressed: _remove,
           ),
         ],

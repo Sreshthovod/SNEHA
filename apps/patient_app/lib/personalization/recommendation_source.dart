@@ -21,6 +21,9 @@ class Suggestion {
     required this.chosenOnDevice,
     this.recommendationId,
     this.breakMinutes,
+    this.hintsEnabled = false,
+    this.memoryItemIds = const [],
+    this.readAloudFirst = false,
   });
 
   final EngineAction action;
@@ -34,6 +37,16 @@ class Suggestion {
   /// Only set for server recommendations (sent back with the result).
   final String? recommendationId;
   final int? breakMinutes;
+
+  /// The engine advises hints (recent struggle or tiredness).
+  final bool hintsEnabled;
+
+  /// Approved memories the engine chose for this activity, most relevant
+  /// first.
+  final List<String> memoryItemIds;
+
+  /// The person often asked to hear questions again: read each one aloud.
+  final bool readAloudFirst;
 }
 
 /// Where suggestions come from. The UI depends only on this interface.
@@ -101,6 +114,11 @@ class LocalFacts {
                           as Map)['mean_response_ms']
                       as num?)
                   ?.toDouble(),
+          instructionsRepeated:
+              ((jsonDecode(r['metrics_json'] as String)
+                          as Map)['instructions_repeated']
+                      as num?)
+                  ?.toInt(),
         ),
     ];
   }
@@ -117,6 +135,31 @@ class LocalFacts {
           id: r['id'] as String,
           endedAt: DateTime.parse(r['ended_at'] as String).toUtc(),
           endReason: r['end_reason'] as String?,
+        ),
+    ];
+  }
+
+  /// Caregiver tiredness reports kept on this phone (made here, or pulled
+  /// from the dashboard), as engine observations. Level and time only.
+  Future<List<ObservationFact>> fatigueObservations(String patientId) async {
+    final since = _clock().subtract(
+      Duration(
+        minutes: (engineConfig.fatigue.observationWindowHours * 60).ceil(),
+      ),
+    );
+    final rows = await _local.db.query(
+      'fatigue_reports',
+      where: 'patient_id = ? AND reported_at >= ?',
+      whereArgs: [patientId, isoUtc(since)],
+      orderBy: 'reported_at',
+    );
+    return [
+      for (final r in rows)
+        ObservationFact(
+          id: r['id'] as String,
+          category: 'fatigue',
+          observedAt: DateTime.parse(r['reported_at'] as String).toUtc(),
+          fatigueLevel: r['level'] as String,
         ),
     ];
   }
@@ -224,8 +267,9 @@ class LocalFacts {
       results: await results(profile.patientId),
       interests: prefs.interests,
       dislikedSlugs: prefs.disliked,
-      // Caregiver observations are not synced to the phone; the server
-      // engine uses them when online.
+      // Only caregiver tiredness reports reach the phone (level and time,
+      // never note text); other observations stay on the server.
+      observations: await fatigueObservations(profile.patientId),
       sessionEnds: await sessionEnds(profile.patientId),
       content: await content(profile.patientId, prefs.interests),
       stopRequested: stopRequested,
@@ -264,6 +308,9 @@ class LocalRecommendationSource implements RecommendationSource {
       reasonCodes: rec.reasonCodes,
       chosenOnDevice: true,
       breakMinutes: rec.breakMinutes,
+      hintsEnabled: rec.hintsEnabled,
+      memoryItemIds: rec.memoryItemIds,
+      readAloudFirst: rec.readAloudFirst,
     );
   }
 }
@@ -329,6 +376,9 @@ class ServerFirstRecommendationSource implements RecommendationSource {
             chosenOnDevice: false,
             recommendationId: rec.id,
             breakMinutes: rec.breakMinutes,
+            hintsEnabled: rec.hintsEnabled,
+            memoryItemIds: rec.memoryItemIds,
+            readAloudFirst: rec.readAloudFirst,
           );
         }
         debugPrint('Recommendation: server suggested an unplayable activity');

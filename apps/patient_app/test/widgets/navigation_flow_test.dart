@@ -60,6 +60,7 @@ void main() {
     expect(find.text('Namaste, Aita'), findsOneWidget);
 
     // Change person → profile selection lists the paired profile.
+    await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('Change person'));
     expect(find.text('Who is using SNEHA?'), findsWidgets);
     await tapVisible(tester, find.text('Aita'));

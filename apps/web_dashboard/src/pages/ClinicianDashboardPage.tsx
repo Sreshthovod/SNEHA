@@ -2,15 +2,16 @@ import { Link } from 'react-router-dom'
 import { getAnalytics } from '../api/analytics'
 import { listPatients } from '../api/patients'
 import { listReports, reportPdfAvailable } from '../api/reports'
+import { listReviewItems } from '../api/review'
 import type { Patient } from '../api/types'
 import { CompletenessWarning } from '../components/analytics/CompletenessWarning'
 import { PdfDownloadButton } from '../components/PdfDownloadButton'
-import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, Loading } from '../components/ui/States'
 import { useAsync } from '../hooks/useAsync'
 import { pct, seconds } from '../lib/analytics'
 import { addDays, formatDate, todayInZone } from '../lib/dates'
+import { initials } from '../lib/people'
 import { reportDates } from '../lib/reports'
 
 const WINDOW_DAYS = 9
@@ -19,11 +20,12 @@ function ClinicianPatientCard({ patient }: { patient: Patient }) {
   const today = todayInZone(patient.timezone)
   const data = useAsync(
     async (signal) => {
-      const [analytics, reports] = await Promise.all([
+      const [analytics, reports, confirmed] = await Promise.all([
         getAnalytics(patient.id, addDays(today, -(WINDOW_DAYS - 1)), today, signal),
         listReports(patient.id, signal),
+        listReviewItems(patient.id, 'confirmed', signal),
       ])
-      return { analytics, latestReady: reports.find(reportPdfAvailable) ?? null }
+      return { analytics, confirmed, latestReady: reports.find(reportPdfAvailable) ?? null }
     },
     [patient.id, today],
   )
@@ -32,54 +34,83 @@ function ClinicianPatientCard({ patient }: { patient: Patient }) {
   const latest = data.data?.latestReady
   const latestDates = latest ? reportDates(latest.period_start, latest.period_end, patient.timezone) : null
   return (
-    <Card title={patient.display_name}>
+    <section className="card person-summary" aria-labelledby={`clinician-person-${patient.id}`}>
+      <div className="person-summary__header">
+        <div className="person-summary__identity">
+          <span className="app-user__avatar" aria-hidden="true">
+            {initials(patient.display_name)}
+          </span>
+          <div>
+            <h2 id={`clinician-person-${patient.id}`}>
+              <Link to={base}>{patient.display_name}</Link>
+            </h2>
+            <p className="person-card__meta">Last {WINDOW_DAYS} days · descriptive only</p>
+          </div>
+        </div>
+      </div>
       {data.status === 'error' && <ErrorState error={data.error} onRetry={data.reload} />}
       {!data.data && data.status === 'loading' && <Loading />}
       {a && (
         <>
-          <p className="field__hint">Last {WINDOW_DAYS} days, descriptive only.</p>
+          <div className="person-summary__grid">
+            <div className="metric">
+              <p className="metric__label">Activities recorded</p>
+              <p className="metric__value">{a.totals.results}</p>
+              <p className="field__hint">
+                on {a.completeness.days_with_activity} of {a.completeness.days_elapsed} days
+              </p>
+            </div>
+            <div className="metric">
+              <p className="metric__label">Sessions completed</p>
+              <p className="metric__value">
+                {a.totals.sessions_completed} of {a.totals.sessions_ended}
+              </p>
+            </div>
+            <div className="metric">
+              <p className="metric__label">Sessions ended early for tiredness</p>
+              <p className="metric__value">{a.totals.sessions_ended_for_fatigue}</p>
+            </div>
+          </div>
+          <CompletenessWarning completeness={a.completeness} />
           <dl className="definition-list">
-            <dt>Activities recorded</dt>
-            <dd>{a.totals.results}</dd>
-            <dt>Days with activity</dt>
-            <dd>
-              {a.completeness.days_with_activity} of {a.completeness.days_elapsed}
-            </dd>
-            <dt>Sessions completed</dt>
-            <dd>
-              {a.totals.sessions_completed} of {a.totals.sessions_ended}
-            </dd>
-            <dt>Sessions ended early for tiredness</dt>
-            <dd>{a.totals.sessions_ended_for_fatigue}</dd>
             <dt>Answers correct</dt>
-            <dd>{pct(a.totals.accuracy_mean)}</dd>
+            <dd>{pct(a.totals.accuracy_mean)} <span className="field__hint">(across all activities in the period; see Activity trends for their usual pattern)</span></dd>
             <dt>Typical time to answer</dt>
             <dd>{seconds(a.totals.median_response_ms)}</dd>
-            <dt>May be worth reviewing</dt>
+            <dt>Confirmed by the family for discussion</dt>
             <dd>
-              {a.review_flags.length === 0 ? 'Nothing stands out' : a.review_flags.map((f) => f.title).join('; ')}
+              {data.data?.confirmed.length ? (
+                <ul className="attention-list">
+                  {data.data.confirmed.map((i) => (
+                    <li key={i.id}>{i.title}</li>
+                  ))}
+                </ul>
+              ) : (
+                'Nothing confirmed. Automated prompts are shared only after a caregiver confirms them.'
+              )}
             </dd>
           </dl>
-          <CompletenessWarning completeness={a.completeness} />
-          {latest && latestDates ? (
-            <div>
-              <p>
-                Latest report: {formatDate(latestDates.from)} – {formatDate(latestDates.to)}
-              </p>
-              <PdfDownloadButton report={latest} fileName={`sneha-report-${latestDates.from}-to-${latestDates.to}.pdf`} />
-            </div>
-          ) : (
-            <p className="field__hint">No ready report yet.</p>
-          )}
-          <p className="link-row">
-            <Link to={`${base}/analytics`}>Activity trends</Link>
-            <Link to={`${base}/reports`}>Reports</Link>
-            <Link to={`${base}/observations`}>Observations</Link>
-            <Link to={`${base}/progress`}>Progress</Link>
-          </p>
+          <div className="report-row">
+            {latest && latestDates ? (
+              <>
+                <p>
+                  Latest report: {formatDate(latestDates.from)} – {formatDate(latestDates.to)}
+                </p>
+                <PdfDownloadButton report={latest} fileName={`sneha-report-${latestDates.from}-to-${latestDates.to}.pdf`} />
+              </>
+            ) : (
+              <p className="field__hint">No ready report yet.</p>
+            )}
+          </div>
+          <nav className="link-row link-row--buttons" aria-label={`Open ${patient.display_name}'s record`}>
+            <Link className="button button--secondary" to={`${base}/analytics`}>Activity trends</Link>
+            <Link className="button button--secondary" to={`${base}/reports`}>Reports</Link>
+            <Link className="button button--secondary" to={`${base}/observations`}>Observations</Link>
+            <Link className="button button--secondary" to={`${base}/progress`}>Progress</Link>
+          </nav>
         </>
       )}
-    </Card>
+    </section>
   )
 }
 

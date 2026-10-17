@@ -1,102 +1,120 @@
 /*
- * SNEHA design tokens. All colours meet WCAG 2.2 AA contrast (4.5:1 for text)
- * against their paired surface in both light and dark themes.
+ * SNEHA design tokens (docs/design-system-spec.md §7.2).
+ * Light is the default; dark follows the system unless the viewer forces light.
+ * Extra high contrast is a complete light palette that re-declares every colour token,
+ * so dark values can never leak into it (fixes black text on dark cards).
  */
 :root {
-  color-scheme: light dark;
-
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
-  --font-size-sm: 0.9375rem; /* 15px */
-  --font-size-md: 1.0625rem; /* 17px base: dashboards are read for long periods */
-  --font-size-lg: 1.25rem;
-  --font-size-xl: 1.625rem;
-  --font-size-2xl: 2rem;
-  --line-height: 1.6;
-
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --control-min-height: 44px; /* WCAG 2.5.5 target size */
-  --content-max-width: 72rem;
-
-  --color-bg: #f7f6f2;
-  --color-surface: #ffffff;
-  --color-surface-muted: #efede6;
-  --color-border: #d6d2c4;
-  --color-text: #1d1b16;
-  --color-text-muted: #55514a;
-  --color-primary: #8a3b12;
-  --color-primary-contrast: #ffffff;
-  --color-focus: #1a5fb4;
-  --color-success-bg: #e3f1e5;
-  --color-success-text: #1b5e20;
-  --color-warning-bg: #fdf0d5;
-  --color-warning-text: #7a4b00;
-  --color-danger-bg: #fbe4e2;
-  --color-danger-text: #9b1c1c;
-  --color-neutral-bg: #ebe9e2;
-  --color-neutral-text: #3d3a34;
-  --color-info-bg: #e6eef8;
-  --color-info-text: #173c66;
-  --color-chart: #5c6b8a;
-  --color-chart-track: #e8e6df;
-  --shadow-card: 0 1px 2px rgb(29 27 22 / 6%), 0 4px 16px rgb(29 27 22 / 4%);
-  --transition: 120ms ease;
+  color-scheme: light;
+  /* type */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans',
+    'Noto Sans Devanagari', 'Noto Sans Bengali', 'Nirmala UI',
+    'Kohinoor Devanagari', 'Kohinoor Bangla', sans-serif;
+  --font-size-sm: 0.9375rem;  --font-size-md: 1.0625rem;
+  --font-size-lg: 1.25rem;    --font-size-xl: 1.625rem;  --font-size-2xl: 2rem;
+  --text-page-title: 1.75rem; --text-section-title: 1.3125rem;
+  --text-card-title: 1.125rem; --text-label: 0.9375rem; --text-eyebrow: 0.8125rem;
+  --text-chart: 0.875rem;     --text-metric: 1.75rem;
+  --line-height: 1.6;         --line-height-tight: 1.25;
+  /* space */
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+  --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem; --space-12: 3rem;
+  /* shape */
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-pill: 999px;
+  --control-min-height: 44px; --content-max-width: 72rem; --sidebar-width: 248px;
+  /* colour */
+  --color-bg: #FAF8F3; --color-surface: #FFFFFF; --color-surface-muted: #F1F4EF;
+  --color-surface-selected: #E8EFE7;
+  --color-border: #E3E7E0; --color-border-strong: #7D8A80;
+  --color-text: #202C25; --color-text-muted: #626C65;
+  --color-primary: #3F7057; --color-primary-strong: #244C3A; --color-primary-contrast: #FFFFFF;
+  --color-accent: #C98168; --color-accent-strong: #B0634A; --color-accent-text: #9A5540;
+  --color-focus: #1B5E8C;
+  --color-success-bg: #E4F1E7; --color-success-text: #1E5A35;
+  --color-warning-bg: #FBF0DC; --color-warning-text: #7A4A00;
+  --color-danger-bg: #FBE7E3;  --color-danger-text: #9A2B1E; --color-danger-contrast: #FFFFFF;
+  --color-info-bg: #E5EEF5;    --color-info-text: #1C4A6E;
+  --color-neutral-bg: #EEF1EC; --color-neutral-text: #3F4842;
+  --color-chart: #3F7057; --color-chart-track: #E8EFE7;
+  --color-chart-accent: #B0634A; --color-chart-grid: #E3E7E0;
+  --color-backdrop: rgb(20 26 22 / 45%);
+  /* elevation */
+  --shadow-1: 0 1px 2px rgb(32 44 37 / 6%), 0 1px 3px rgb(32 44 37 / 4%);
+  --shadow-2: 0 4px 12px rgb(32 44 37 / 8%), 0 2px 4px rgb(32 44 37 / 5%);
+  --shadow-3: 0 12px 32px rgb(32 44 37 / 14%);
+  --shadow-card: var(--shadow-1);          /* alias kept for existing rules */
+  /* motion */
+  --motion-fast: 120ms; --motion-base: 200ms; --motion-slow: 280ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --transition: var(--motion-fast) var(--ease);
 }
 
+/* Dark: system preference unless the viewer forced light. Keep both blocks in sync. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #15140f;
-    --color-surface: #1f1d18;
-    --color-surface-muted: #2a2822;
-    --color-border: #45413a;
-    --color-text: #f3f1ea;
-    --color-text-muted: #c2bdb1;
-    --color-primary: #f0a46e;
-    --color-primary-contrast: #1d1b16;
-    --color-focus: #8cb8ff;
-    --color-success-bg: #18321b;
-    --color-success-text: #a5d6a7;
-    --color-warning-bg: #3a2c0c;
-    --color-warning-text: #ffd27a;
-    --color-danger-bg: #3d1614;
-    --color-danger-text: #ffaba3;
-    --color-neutral-bg: #2d2b25;
-    --color-neutral-text: #ddd8cc;
-    --color-info-bg: #142338;
-    --color-info-text: #a9c8f0;
-    --color-chart: #9fb0d4;
-    --color-chart-track: #34322b;
-    --shadow-card: none;
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-bg: #131A16; --color-surface: #1B241F; --color-surface-muted: #222D27;
+    --color-surface-selected: #2A3A31;
+    --color-border: #34423A; --color-border-strong: #7A887E;
+    --color-text: #EEF2EC; --color-text-muted: #AEB8B0;
+    --color-primary: #8FC4A5; --color-primary-strong: #B5DCC4; --color-primary-contrast: #10201A;
+    --color-accent: #E0A48E; --color-accent-strong: #E0A48E; --color-accent-text: #E8B4A1;
+    --color-focus: #8EC5F0;
+    --color-success-bg: #183020; --color-success-text: #A7D9B5;
+    --color-warning-bg: #3A2C0E; --color-warning-text: #F2CD7E;
+    --color-danger-bg: #3D1A16;  --color-danger-text: #F5ADA0; --color-danger-contrast: #1B0A07;
+    --color-info-bg: #142838;    --color-info-text: #A8CBEA;
+    --color-neutral-bg: #26302A; --color-neutral-text: #D5DCD6;
+    --color-chart: #8FC4A5; --color-chart-track: #2A3630;
+    --color-chart-accent: #E0A48E; --color-chart-grid: #34423A;
+    --color-backdrop: rgb(0 0 0 / 60%);
+    --shadow-1: none; --shadow-2: 0 0 0 1px var(--color-border); --shadow-3: 0 0 0 1px var(--color-border);
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --transition: none;
-  }
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #131A16; --color-surface: #1B241F; --color-surface-muted: #222D27;
+  --color-surface-selected: #2A3A31;
+  --color-border: #34423A; --color-border-strong: #7A887E;
+  --color-text: #EEF2EC; --color-text-muted: #AEB8B0;
+  --color-primary: #8FC4A5; --color-primary-strong: #B5DCC4; --color-primary-contrast: #10201A;
+  --color-accent: #E0A48E; --color-accent-strong: #E0A48E; --color-accent-text: #E8B4A1;
+  --color-focus: #8EC5F0;
+  --color-success-bg: #183020; --color-success-text: #A7D9B5;
+  --color-warning-bg: #3A2C0E; --color-warning-text: #F2CD7E;
+  --color-danger-bg: #3D1A16;  --color-danger-text: #F5ADA0; --color-danger-contrast: #1B0A07;
+  --color-info-bg: #142838;    --color-info-text: #A8CBEA;
+  --color-neutral-bg: #26302A; --color-neutral-text: #D5DCD6;
+  --color-chart: #8FC4A5; --color-chart-track: #2A3630;
+  --color-chart-accent: #E0A48E; --color-chart-grid: #34423A;
+  --color-backdrop: rgb(0 0 0 / 60%);
+  --shadow-1: none; --shadow-2: 0 0 0 1px var(--color-border); --shadow-3: 0 0 0 1px var(--color-border);
 }
 
-/* Viewer preferences set from Settings (data attributes on <html>). */
-:root[data-text-size='large'] {
-  font-size: 112.5%;
-}
-:root[data-text-size='larger'] {
-  font-size: 125%;
-}
+/* High contrast, reduced motion, text size (after the dark rules so they win). */
 :root[data-contrast='high'] {
-  --color-text: #000000;
-  --color-text-muted: #2b2924;
-  --color-border: #4a463d;
-  --color-bg: #ffffff;
-  --color-surface-muted: #e9e7e0;
+  color-scheme: light;
+  --color-bg: #FFFFFF; --color-surface: #FFFFFF; --color-surface-muted: #EEF1EC;
+  --color-surface-selected: #DCE8DD;
+  --color-border: #4F5A53; --color-border-strong: #2E3631;
+  --color-text: #000000; --color-text-muted: #2E3631;
+  --color-primary: #1B3A2C; --color-primary-strong: #000000; --color-primary-contrast: #FFFFFF;
+  --color-accent: #6E3220; --color-accent-strong: #6E3220; --color-accent-text: #6E3220;
+  --color-focus: #0B3F66;
+  /* status pairs: the light values (re-declare all so dark values cannot leak) */
+  --color-success-bg: #E4F1E7; --color-success-text: #1E5A35;
+  --color-warning-bg: #FBF0DC; --color-warning-text: #7A4A00;
+  --color-danger-bg: #FBE7E3;  --color-danger-text: #9A2B1E; --color-danger-contrast: #FFFFFF;
+  --color-info-bg: #E5EEF5;    --color-info-text: #1C4A6E;
+  --color-neutral-bg: #EEF1EC; --color-neutral-text: #3F4842;
+  --color-chart: #1B3A2C; --color-chart-track: #DCE8DD;
+  --color-chart-accent: #6E3220; --color-chart-grid: #4F5A53;
+  --color-backdrop: rgb(0 0 0 / 55%);
+  --shadow-1: none; --shadow-2: 0 0 0 2px #000; --shadow-3: 0 0 0 2px #000;
 }
-:root[data-motion='reduced'] {
-  --transition: none;
+@media (prefers-reduced-motion: reduce) {
+  :root { --motion-fast: 0ms; --motion-base: 0ms; --motion-slow: 0ms; }
 }
+:root[data-motion='reduced'] { --motion-fast: 0ms; --motion-base: 0ms; --motion-slow: 0ms; }
+:root[data-text-size='large'] { font-size: 112.5%; }
+:root[data-text-size='larger'] { font-size: 125%; }

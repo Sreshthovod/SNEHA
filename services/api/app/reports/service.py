@@ -19,10 +19,24 @@ from app.analytics.service import observations_in, summarise
 from app.core.config import Settings
 from app.models.activities import ActivityResult
 from app.models.care import Report
-from app.models.enums import AuditOutcome, ConsentType, FilePurpose, ReportStatus
+from app.models.enums import (
+    AuditOutcome,
+    ConsentType,
+    FilePurpose,
+    ObservationCategory,
+    RecordSource,
+    ReportStatus,
+)
 from app.models.files import StoredFile
 from app.models.patients import PatientProfile
-from app.reports.pdf import ObservationLine, ReportInput, build_pdf
+from app.reports.pdf import (
+    ObservationLine,
+    ReportInput,
+    ReviewItemLine,
+    TirednessCounts,
+    build_pdf,
+)
+from app.review import service as review
 from app.services import audit
 from app.services.access import has_consent
 from app.services.files import FileStore
@@ -59,12 +73,43 @@ def generate(
         from_date, to_date = local_period(report, patient)
         summary = summarise(db, patient, from_date, to_date, cfg=cfg, now=now)
         lower, upper = day_bounds(patient, from_date, to_date)
+        rows = observations_in(db, patient, lower, upper)
         observations = [
-            ObservationLine(o.observed_at, o.category.value, o.status.value, o.source.value, o.note)
-            for o in observations_in(db, patient, lower, upper)
+            ObservationLine(
+                o.observed_at,
+                o.category.value,
+                o.status.value,
+                o.source.value,
+                o.note,
+                o.fatigue_level.value if o.fatigue_level else None,
+            )
+            for o in rows
+        ]
+        # Every prompt in the period becomes (or stays) a review item, so the report shows
+        # each one's caregiver decision, or that it is still awaiting one.
+        items = [
+            ReviewItemLine(
+                i.rule_id,
+                i.title,
+                i.explanation,
+                dict(i.numbers),
+                i.status.value,
+                i.decided_at,
+                i.decision_reason,
+            )
+            for i in review.scan(db, patient, from_date, to_date, actor_id=report.requested_by_id)
         ]
         pdf = build_pdf(
-            ReportInput(report.id, patient.display_name, summary, observations, cfg, now),
+            ReportInput(
+                report.id,
+                patient.display_name,
+                summary,
+                observations,
+                cfg,
+                now,
+                review_items=items,
+                tiredness=_tiredness(db, patient.id, lower, upper, rows),
+            ),
             font_path=settings.report_font_path,
         )
         storage_key, size, sha256 = store.save_bytes(pdf)
@@ -111,6 +156,36 @@ def generate(
         )
         db.commit()
     return report
+
+
+def _tiredness(db: Session, patient_id: str, lower, upper, observations) -> TirednessCounts:
+    def level_count(source: RecordSource, level: str | None) -> int:
+        return sum(
+            1
+            for o in observations
+            if o.category is ObservationCategory.FATIGUE
+            and o.source is source
+            and (o.fatigue_level.value if o.fatigue_level else None) == level
+        )
+
+    patient_button = db.scalar(
+        select(func.count())
+        .select_from(ActivityResult)
+        .where(
+            ActivityResult.patient_id == patient_id,
+            ActivityResult.fatigue_reported.is_(True),
+            ActivityResult.completed_at >= lower,
+            ActivityResult.completed_at < upper,
+        )
+    )
+    return TirednessCounts(
+        patient_button=patient_button or 0,
+        caregiver_phone_mild=level_count(RecordSource.DEVICE, "mild"),
+        caregiver_phone_severe=level_count(RecordSource.DEVICE, "severe"),
+        dashboard_mild=level_count(RecordSource.DASHBOARD, "mild"),
+        dashboard_severe=level_count(RecordSource.DASHBOARD, "severe"),
+        dashboard_no_level=level_count(RecordSource.DASHBOARD, None),
+    )
 
 
 # ---------------------------------------------------------------- automation

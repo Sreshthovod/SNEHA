@@ -897,6 +897,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/review-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Review Items
+         * @description Caregivers see every item. Clinicians see only items a caregiver confirmed.
+         */
+        get: operations["list_review_items_api_v1_patients__patient_id__review_items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/review-items/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Scan Review Items
+         * @description Run the review rules over stored data for the period and keep what they raise as
+         *     items awaiting a caregiver's review. Safe to repeat.
+         */
+        post: operations["scan_review_items_api_v1_patients__patient_id__review_items_scan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/review-items/{item_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Review Item
+         * @description Confirm (worth discussing with a clinician) or dismiss (explained), with a reason.
+         *     A decision is final; it is recorded with who made it and when.
+         */
+        post: operations["decide_review_item_api_v1_patients__patient_id__review_items__item_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/routines": {
         parameters: {
             query?: never;
@@ -964,6 +1026,27 @@ export interface paths {
         put?: never;
         /** Complete Session */
         post: operations["complete_session_api_v1_patients__patient_id__sessions__session_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patients/{patient_id}/sessions/{session_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Events
+         * @description What happened inside the session, in order: answers, hints, pauses, tiredness
+         *     reports, stop requests and every in-session adaptation decision with its reasons.
+         */
+        get: operations["list_events_api_v1_patients__patient_id__sessions__session_id__events_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1113,6 +1196,15 @@ export interface components {
             /** Version */
             version: number;
         };
+        /**
+         * ActivityEventType
+         * @description One thing that happened inside an activity run (migration 0009).
+         *
+         *     Events are recorded on the phone as they happen and pushed with the outbox, so a
+         *     caregiver can see what happened and what the app did in response.
+         * @enum {string}
+         */
+        ActivityEventType: "activity_started" | "attempt" | "hint_requested" | "hint_auto" | "round_solved" | "round_skipped" | "paused" | "resumed" | "fatigue_reported" | "stop_requested" | "adaptation" | "break_taken" | "break_declined" | "activity_ended" | "instructions_repeated";
         /** ActivityMetrics */
         ActivityMetrics: {
             /** Accuracy Mean */
@@ -1233,6 +1325,12 @@ export interface components {
             preferences: components["schemas"]["ActivityPreference"][];
             /** Review Flags */
             review_flags: components["schemas"]["ReviewFlag"][];
+            /**
+             * Review Flags Withheld
+             * @description True for clinicians: automated prompts are not shown to them. They see only items a caregiver confirmed (GET /patients/{id}/review-items).
+             * @default false
+             */
+            review_flags_withheld?: boolean;
             /** Rules Not Evaluated */
             rules_not_evaluated: components["schemas"]["RuleNotEvaluated"][];
             /** Timezone */
@@ -1702,12 +1800,166 @@ export interface components {
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
         };
+        /**
+         * EventData
+         * @description Small, typed values only. There is deliberately no free-text field.
+         */
+        EventData: {
+            /** Action */
+            action?: ("continue" | "show_hint" | "shorten" | "offer_break" | "end_session") | null;
+            /**
+             * Content Source
+             * @description activity_started: personal (approved memories) or generic
+             */
+            content_source?: ("personal" | "generic") | null;
+            /** Correct */
+            correct?: boolean | null;
+            /**
+             * Decided On
+             * @description activity_started: 'device' (offline engine) or 'server'; absent when the person chose the activity themselves
+             */
+            decided_on?: ("device" | "server") | null;
+            /** Difficulty */
+            difficulty?: number | null;
+            /**
+             * Engine Reason Codes
+             * @description activity_started: the engine's reasons
+             */
+            engine_reason_codes?: string[];
+            /** Hint Number */
+            hint_number?: number | null;
+            /** Latency Ms */
+            latency_ms?: number | null;
+            /** Level */
+            level?: ("mild" | "severe") | null;
+            /**
+             * Memory Id
+             * @description The memory this round shows
+             */
+            memory_id?: string | null;
+            /**
+             * Memory Ids
+             * @description activity_started: every memory used
+             */
+            memory_ids?: string[];
+            /** Outcome */
+            outcome?: ("completed" | "stopped" | "tired" | "shortened" | "ended_by_policy") | null;
+            /** Reason Codes */
+            reason_codes?: string[];
+            /** Rounds Planned */
+            rounds_planned?: number | null;
+            /** Rounds Remaining */
+            rounds_remaining?: number | null;
+            /** Source */
+            source?: ("patient" | "caregiver" | "system") | null;
+        };
+        /** EventMutation */
+        EventMutation: {
+            data: components["schemas"]["EventPayload"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            entity_type: "activity_event";
+            /** Mutation Id */
+            mutation_id: string;
+            /**
+             * Operation
+             * @default upsert
+             * @constant
+             */
+            operation?: "upsert";
+        };
+        /** EventOut */
+        EventOut: {
+            /** Activity Id */
+            activity_id: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            event_type: components["schemas"]["ActivityEventType"];
+            /** Id */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Round Index */
+            round_index: number | null;
+            /** Seq */
+            seq: number;
+            /** Session Id */
+            session_id: string;
+        };
+        /** EventPayload */
+        EventPayload: {
+            /** Activity Id */
+            activity_id: string;
+            data?: components["schemas"]["EventData"];
+            event_type: components["schemas"]["ActivityEventType"];
+            /** Id */
+            id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Round Index */
+            round_index?: number | null;
+            /**
+             * Seq
+             * @description Order within the session.
+             */
+            seq: number;
+            /** Session Id */
+            session_id: string;
+        };
         /** FallbackOut */
         FallbackOut: {
             /** Reason */
             reason: string | null;
             /** Used */
             used: boolean;
+        };
+        /**
+         * FatigueLevel
+         * @description How tired the person seemed (fatigue observations only; migration 0010).
+         * @enum {string}
+         */
+        FatigueLevel: "mild" | "severe";
+        /** FatigueReportMutation */
+        FatigueReportMutation: {
+            data: components["schemas"]["FatigueReportPayload"];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            entity_type: "fatigue_report";
+            /** Mutation Id */
+            mutation_id: string;
+            /**
+             * Operation
+             * @default upsert
+             * @constant
+             */
+            operation?: "upsert";
+        };
+        /**
+         * FatigueReportPayload
+         * @description A caregiver's tiredness report made on the patient's phone. Level and time only:
+         *     there is deliberately no free-text field.
+         */
+        FatigueReportPayload: {
+            /** Id */
+            id: string;
+            level: components["schemas"]["FatigueLevel"];
+            /**
+             * Reported At
+             * Format: date-time
+             */
+            reported_at: string;
         };
         /** FeatureStatus */
         FeatureStatus: {
@@ -1858,6 +2110,11 @@ export interface components {
             kind?: components["schemas"]["MemoryKind"] | null;
             /** Media File Id */
             media_file_id?: string | null;
+            /**
+             * Relationship
+             * @description Person memories only: how this person is related to the patient, as the caregiver states it (e.g. 'granddaughter'). Used for gentle hints and story prompts. Send null to clear.
+             */
+            relationship?: string | null;
             /** Tags */
             tags?: string[] | null;
             /** Title */
@@ -1877,6 +2134,11 @@ export interface components {
             kind: components["schemas"]["MemoryKind"];
             /** Media File Id */
             media_file_id?: string | null;
+            /**
+             * Relationship
+             * @description Person memories only: how this person is related to the patient, as the caregiver states it (e.g. 'granddaughter'). Used for gentle hints and story prompts.
+             */
+            relationship?: string | null;
             /** Tags */
             tags?: string[];
             /** Title */
@@ -1925,6 +2187,8 @@ export interface components {
             media_file_id: string | null;
             /** Patient Id */
             patient_id: string;
+            /** Relationship */
+            relationship?: string | null;
             /** Review Note */
             review_note: string | null;
             /** Reviewed At */
@@ -2033,6 +2297,7 @@ export interface components {
             category?: components["schemas"]["ObservationCategory"] | null;
             /** Expected Version */
             expected_version: number;
+            fatigue_level?: components["schemas"]["FatigueLevel"] | null;
             /** Note */
             note?: string | null;
             /** Observed At */
@@ -2046,6 +2311,8 @@ export interface components {
         /** ObservationCreate */
         ObservationCreate: {
             category: components["schemas"]["ObservationCategory"];
+            /** @description Only for category 'fatigue'. 'severe' means the next suggestion is a rest, and the patient's phone stops a running activity once it has synced. */
+            fatigue_level?: components["schemas"]["FatigueLevel"] | null;
             /** Note */
             note: string;
             /**
@@ -2064,6 +2331,7 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            fatigue_level?: components["schemas"]["FatigueLevel"] | null;
             /** Id */
             id: string;
             /** Note */
@@ -2488,6 +2756,12 @@ export interface components {
             } | null;
             /** Patient Id */
             patient_id: string;
+            /**
+             * Read Aloud First
+             * @description Read each question aloud when it appears (the person often asked to hear it again). Applied only if read-aloud is switched on and a voice exists.
+             * @default false
+             */
+            read_aloud_first?: boolean;
             /** Reason Codes */
             reason_codes: string[];
             /** Session Id */
@@ -2803,6 +3077,19 @@ export interface components {
             personalization: components["schemas"]["StateOut"];
             result: components["schemas"]["ResultOut"];
         };
+        /** ReviewDecision */
+        ReviewDecision: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "confirmed" | "dismissed";
+            /**
+             * Reason
+             * @description Why: what the caregiver knows (required for both decisions; kept).
+             */
+            reason: string;
+        };
         /** ReviewFlag */
         ReviewFlag: {
             /** Explanation */
@@ -2827,7 +3114,7 @@ export interface components {
             title: string;
             /**
              * Wording
-             * @default May be worth a caregiver or clinician taking a look. Not a finding.
+             * @default Not a finding. An automated prompt that a caregiver reviews before anything is shared with a clinician.
              */
             wording?: string;
         };
@@ -2848,6 +3135,12 @@ export interface components {
             patient_id: string;
             /** Review Flags */
             review_flags: components["schemas"]["ReviewFlag"][];
+            /**
+             * Review Flags Withheld
+             * @description True for clinicians: automated prompts are not shown to them. They see only items a caregiver confirmed (GET /patients/{id}/review-items).
+             * @default false
+             */
+            review_flags_withheld?: boolean;
             /** Rules Not Evaluated */
             rules_not_evaluated: components["schemas"]["RuleNotEvaluated"][];
             /**
@@ -2855,6 +3148,88 @@ export interface components {
              * Format: date
              */
             to_date: string;
+        };
+        /** ReviewItemOut */
+        ReviewItemOut: {
+            /** Config Version */
+            config_version: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Decided At */
+            decided_at: string | null;
+            /** Decided By Id */
+            decided_by_id: string | null;
+            /** Decision Reason */
+            decision_reason: string | null;
+            /** Explanation */
+            explanation: string;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "change" | "data" | "context";
+            /** Method Version */
+            method_version: string;
+            /** Numbers */
+            numbers: {
+                [key: string]: unknown;
+            };
+            /** Observation Ids */
+            observation_ids: string[];
+            /** Patient Id */
+            patient_id: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Rule Id */
+            rule_id: string;
+            status: components["schemas"]["ReviewItemStatus"];
+            /** Title */
+            title: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /**
+             * Wording
+             * @default An automated prompt from the person's own activity records. It is not a diagnosis and not a finding. A caregiver confirms or dismisses it; only confirmed items are shared with a clinician for discussion.
+             */
+            wording?: string;
+        };
+        /**
+         * ReviewItemStatus
+         * @description Human review of an automated review prompt (migration 0011).
+         *
+         *     Nothing reaches a clinician as a concern until a caregiver confirms it, and a decision
+         *     always records who made it, when and why.
+         * @enum {string}
+         */
+        ReviewItemStatus: "awaiting_review" | "confirmed" | "dismissed";
+        /** ReviewScanRequest */
+        ReviewScanRequest: {
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
         };
         /** RoutineCreate */
         RoutineCreate: {
@@ -3043,7 +3418,7 @@ export interface components {
          * SyncEntity
          * @enum {string}
          */
-        SyncEntity: "activity_session" | "activity_result" | "conversation" | "personalization_state" | "memory_item" | "memory_relationship" | "routine_item" | "activity_definition";
+        SyncEntity: "activity_session" | "activity_result" | "conversation" | "personalization_state" | "memory_item" | "memory_relationship" | "routine_item" | "activity_definition" | "activity_event" | "fatigue_report";
         /**
          * SyncMutationStatus
          * @enum {string}
@@ -3071,7 +3446,7 @@ export interface components {
             /** Device Install Id */
             device_install_id: string;
             /** Mutations */
-            mutations: (components["schemas"]["SessionMutation"] | components["schemas"]["ResultMutation"] | components["schemas"]["ConversationMutation"] | components["schemas"]["PersonalizationMutation"])[];
+            mutations: (components["schemas"]["SessionMutation"] | components["schemas"]["ResultMutation"] | components["schemas"]["ConversationMutation"] | components["schemas"]["PersonalizationMutation"] | components["schemas"]["EventMutation"] | components["schemas"]["FatigueReportMutation"])[];
         };
         /** SyncPushResponse */
         SyncPushResponse: {
@@ -7101,6 +7476,222 @@ export interface operations {
             };
         };
     };
+    list_review_items_api_v1_patients__patient_id__review_items_get: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ReviewItemStatus"] | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Patient profile ID */
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItemOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    scan_review_items_api_v1_patients__patient_id__review_items_scan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Patient profile ID */
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewScanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItemOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decide_review_item_api_v1_patients__patient_id__review_items__item_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+                /** @description Patient profile ID */
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItemOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     list_routines_api_v1_patients__patient_id__routines_get: {
         parameters: {
             query?: never;
@@ -7483,6 +8074,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_events_api_v1_patients__patient_id__sessions__session_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+                /** @description Patient profile ID */
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventOut"][];
                 };
             };
             /** @description Unauthorized */

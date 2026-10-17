@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { ReviewFlag } from '../../api/types'
-import { analytics, apiError, baseRoutes, CAREGIVER, CLINICIAN, mockApi, observation, P, PATIENT, renderApp } from '../harness'
+import { analytics, apiError, baseRoutes, calls, CAREGIVER, CLINICIAN, mockApi, observation, P, PATIENT, renderApp, reviewItem } from '../harness'
 import { DIAGNOSTIC_WORDS } from '../banned-words'
 
 
@@ -98,7 +98,7 @@ describe('activity trends (analytics)', () => {
     renderApp(`/app/patients/${PATIENT.id}/analytics`)
     expect(await screen.findByText('The service is temporarily unavailable.')).toBeInTheDocument()
     fail = false
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await userEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0])
     expect(await screen.findByText(/not a medical assessment/)).toBeInTheDocument()
   })
 
@@ -112,11 +112,97 @@ describe('activity trends (analytics)', () => {
   })
 })
 
-describe('clinician dashboard', () => {
-  it('shows descriptive metrics, review flags, missing-data warning and the latest ready report', async () => {
+describe('review items (human confirmation before anything reaches a clinician)', () => {
+  it('a managing caregiver sees the evidence and must give a reason to confirm', async () => {
+    let item = reviewItem()
     mockApi([
-      ...baseRoutes(CLINICIAN),
       { path: `${P}/analytics`, handler: () => analytics({ review_flags: [FLAG] }) },
+      { method: 'POST', path: `${P}/review-items/scan`, handler: () => [item] },
+      { path: `${P}/review-items`, handler: () => [item] },
+      {
+        method: 'POST',
+        path: `${P}/review-items/ri-1/decision`,
+        handler: ({ body }) => {
+          const b = body as { decision: 'confirmed'; reason: string }
+          item = { ...item, status: b.decision, decision_reason: b.reason, decided_at: '2026-10-10T05:00:00Z', decided_by_id: CAREGIVER.id }
+          return item
+        },
+      },
+      ...baseRoutes(CAREGIVER),
+    ])
+    const { container } = renderApp(`/app/patients/${PATIENT.id}/analytics`)
+    expect(await screen.findByRole('heading', { name: 'Your review' })).toBeInTheDocument()
+    expect(await screen.findByText(/Waiting for your review/)).toBeInTheDocument()
+    expect(screen.getByText(/Nothing is shared with a clinician unless you confirm it/)).toBeInTheDocument()
+    expect(calls.some((c) => c.method === 'POST' && c.path === `${P}/review-items/scan`)).toBe(true)
+
+    await userEvent.click(screen.getByRole('button', { name: /^Confirm: Scores lower/ }))
+    const dialog = screen.getByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }))
+    expect(within(dialog).getByText(/Please write a short reason/)).toBeInTheDocument()
+    expect(calls.some((c) => c.path.endsWith('/decision'))).toBe(false)
+
+    await userEvent.type(within(dialog).getByLabelText(/What have you noticed at home/), 'Synthetic: forgetting names this week')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }))
+    const decision = calls.find((c) => c.path.endsWith('/decision'))
+    expect(decision?.body).toEqual({ decision: 'confirmed', reason: 'Synthetic: forgetting names this week' })
+    expect(await screen.findByText(/Already decided \(1\)/)).toBeInTheDocument()
+    expect(mainText(container)).not.toMatch(DIAGNOSTIC_WORDS)
+  })
+
+  it('shows a prompt raised for overlapping periods once, with the others collapsed (presentation only)', async () => {
+    const latest = reviewItem()
+    const older = reviewItem({ id: 'ri-2', period_start: '2026-09-30', period_end: '2026-10-08' })
+    mockApi([
+      { path: `${P}/analytics`, handler: () => analytics({ review_flags: [{ ...FLAG, rule_id: latest.rule_id, title: latest.title }] }) },
+      { method: 'POST', path: `${P}/review-items/scan`, handler: () => [latest] },
+      { path: `${P}/review-items`, handler: () => [older, latest] },
+      ...baseRoutes(CAREGIVER),
+    ])
+    renderApp(`/app/patients/${PATIENT.id}/analytics`)
+    expect(await screen.findByText('1 prompt to look at')).toBeInTheDocument()
+    expect(screen.getByText(/Also raised for 30 Sept 2026 – 8 Oct 2026 \(1 more\)/)).toBeInTheDocument()
+    // Both stay decidable; the period flag is not repeated as a third card.
+    expect(screen.getAllByRole('button', { name: /^Confirm: / })).toHaveLength(2)
+    expect(screen.getByText(/listed once, with its numbers/)).toBeInTheDocument()
+  })
+
+  it('a helper caregiver sees why they cannot decide', async () => {
+    mockApi([
+      { path: `${P}/analytics`, handler: () => analytics() },
+      { method: 'POST', path: `${P}/review-items/scan`, handler: () => [reviewItem()] },
+      { path: `${P}/review-items`, handler: () => [reviewItem()] },
+      ...baseRoutes(CAREGIVER, { manager: false }),
+    ])
+    renderApp(`/app/patients/${PATIENT.id}/analytics`)
+    expect(await screen.findByText('A managing family member decides on review items.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Confirm: / })).toBeNull()
+  })
+
+  it('a clinician never sees unconfirmed prompts and is told why', async () => {
+    mockApi([
+      { path: `${P}/analytics`, handler: () => analytics({ review_flags: [], review_flags_withheld: true }) },
+      {
+        path: `${P}/review-items`,
+        handler: () => [reviewItem({ status: 'confirmed', decision_reason: 'Synthetic: worth discussing', decided_at: '2026-10-10T05:00:00Z' })],
+      },
+      ...baseRoutes(CLINICIAN),
+    ])
+    renderApp(`/app/patients/${PATIENT.id}/analytics`)
+    expect(await screen.findByText(/shared with clinicians only after a family caregiver confirms them/)).toBeInTheDocument()
+    expect(await screen.findByText(/Synthetic: worth discussing/)).toBeInTheDocument()
+    expect(screen.queryByText('Nothing stands out in this period.')).toBeNull()
+    expect(calls.some((c) => c.path.endsWith('/review-items/scan'))).toBe(false)
+    expect(screen.queryByRole('button', { name: /^Confirm: / })).toBeNull()
+  })
+})
+
+describe('clinician dashboard', () => {
+  it('shows descriptive metrics, confirmed items only, missing-data warning and the latest ready report', async () => {
+    mockApi([
+      { path: `${P}/review-items`, handler: () => [reviewItem({ status: 'confirmed', title: 'Confirmed synthetic item', decided_at: '2026-10-10T05:00:00Z', decision_reason: 'Synthetic' })] },
+      ...baseRoutes(CLINICIAN),
+      { path: `${P}/analytics`, handler: () => analytics({ review_flags: [], review_flags_withheld: true }) },
       {
         path: `${P}/reports`,
         handler: () => [
@@ -132,7 +218,8 @@ describe('clinician dashboard', () => {
     expect(await screen.findByRole('heading', { name: 'Synthetic Patient' })).toBeInTheDocument()
     expect(await screen.findByText('Some days have no activity data')).toBeInTheDocument()
     expect(screen.getByText('Sessions ended early for tiredness')).toBeInTheDocument()
-    expect(screen.getByText('Scores lower than usual')).toBeInTheDocument()
+    expect(screen.getByText('Confirmed synthetic item')).toBeInTheDocument()
+    expect(screen.queryByText('Scores lower than usual')).toBeNull()
     expect(screen.getByText(/Latest report: 1 Oct 2026 – 9 Oct 2026/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Download PDF' })).toBeEnabled()
     expect(mainText(container)).not.toMatch(DIAGNOSTIC_WORDS)

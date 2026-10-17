@@ -104,7 +104,10 @@ class ReviewFlag(BaseModel):
     observation_ids: list[str] = Field(
         description="Caregiver observations in the period, as context for the reviewer."
     )
-    wording: str = "May be worth a caregiver or clinician taking a look. Not a finding."
+    wording: str = (
+        "Not a finding. An automated prompt that a caregiver reviews before anything is "
+        "shared with a clinician."
+    )
 
 
 class RuleNotEvaluated(BaseModel):
@@ -136,6 +139,11 @@ class AnalyticsSummary(BaseModel):
     daily: list[DailyMetrics]
     baseline: BaselineSummary
     review_flags: list[ReviewFlag]
+    review_flags_withheld: bool = Field(
+        default=False,
+        description="True for clinicians: automated prompts are not shown to them. They see "
+        "only items a caregiver confirmed (GET /patients/{id}/review-items).",
+    )
     rules_not_evaluated: list[RuleNotEvaluated]
     context_observations: list[ContextObservation]
     methodology: list[str]
@@ -149,5 +157,10 @@ class ReviewFlagsResponse(BaseModel):
     method_version: str
     config_version: str
     review_flags: list[ReviewFlag]
+    review_flags_withheld: bool = Field(
+        default=False,
+        description="True for clinicians: automated prompts are not shown to them. They see "
+        "only items a caregiver confirmed (GET /patients/{id}/review-items).",
+    )
     rules_not_evaluated: list[RuleNotEvaluated]
     disclaimer: str

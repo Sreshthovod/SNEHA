@@ -72,16 +72,21 @@ export function ProgressSection() {
               { header: 'Times played', cell: (r) => r.results, numeric: true },
               { header: 'Finished', cell: (r) => r.completed, numeric: true },
               { header: 'Stopped part-way', cell: (r) => r.interrupted, numeric: true },
-              { header: 'Enjoyed / OK / not really', cell: (r) => `${r.enjoyed} / ${r.neutral} / ${r.not_enjoyed}` },
+              { header: 'Enjoyed', cell: (r) => r.enjoyed, numeric: true },
+              { header: 'It was OK', cell: (r) => r.neutral, numeric: true },
+              { header: 'Not really', cell: (r) => r.not_enjoyed, numeric: true },
               { header: 'Said they were tired', cell: (r) => r.fatigue_reports, numeric: true },
               { header: 'Last played', cell: (r) => (r.last_played_at ? formatDateTime(r.last_played_at, patient.timezone) : '—') },
               { header: 'About the level', cell: (r) => reasonLabel(r.difficulty_reason) },
             ]}
           />
         )}
-        <p className="field__hint">
-          Rules version {p.algorithm_version} · settings {p.config_version}
-        </p>
+        <details className="details">
+          <summary>Technical details</summary>
+          <p className="field__hint">
+            Rules version {p.algorithm_version} · settings {p.config_version}
+          </p>
+        </details>
       </Card>
       <Card title="Recent suggestions">
         {p.recent_recommendations.length === 0 ? (

@@ -56,9 +56,6 @@ export function LoginPage() {
           <li>See gentle activity summaries from the phone app.</li>
           <li>Share reports with a clinician only when you choose to.</li>
         </ul>
-        <p className="field__hint">
-          SNEHA supports daily activities and memory. It does not diagnose any condition.
-        </p>
       </section>
       <Card title={t('login.title')} className="landing__form">
         <form onSubmit={onSubmit} noValidate>

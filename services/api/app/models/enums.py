@@ -114,6 +114,13 @@ class ObservationCategory(StrEnum):
     OTHER = "other"
 
 
+class FatigueLevel(StrEnum):
+    """How tired the person seemed (fatigue observations only; migration 0010)."""
+
+    MILD = "mild"  # "a little tired": simpler, shorter, more hints
+    SEVERE = "severe"  # "very tired": stop and rest
+
+
 class ReportStatus(StrEnum):
     PENDING = "pending"
     GENERATING = "generating"
@@ -141,6 +148,10 @@ class SyncEntity(StrEnum):
     MEMORY_RELATIONSHIP = "memory_relationship"
     ROUTINE_ITEM = "routine_item"
     ACTIVITY_DEFINITION = "activity_definition"
+    ACTIVITY_EVENT = "activity_event"  # migration 0009: pushed by the device
+    # Migration 0010: pushed (a caregiver's report on the phone) and pulled (fatigue
+    # observations, level and time only, never the note).
+    FATIGUE_REPORT = "fatigue_report"
 
 
 class SyncOperation(StrEnum):
@@ -176,9 +187,46 @@ class RecommendationAction(StrEnum):
     NONE = "none"  # nothing suitable is available
 
 
+class ActivityEventType(StrEnum):
+    """One thing that happened inside an activity run (migration 0009).
+
+    Events are recorded on the phone as they happen and pushed with the outbox, so a
+    caregiver can see what happened and what the app did in response.
+    """
+
+    ACTIVITY_STARTED = "activity_started"
+    ATTEMPT = "attempt"  # one answer: data.correct, data.latency_ms
+    HINT_REQUESTED = "hint_requested"  # the person (or a helper) pressed "Hint"
+    HINT_SHOWN_AUTOMATICALLY = "hint_auto"  # the in-session policy showed a hint
+    ROUND_SOLVED = "round_solved"
+    ROUND_SKIPPED = "round_skipped"
+    PAUSED = "paused"
+    RESUMED = "resumed"
+    FATIGUE_REPORTED = "fatigue_reported"  # data.source patient|caregiver, data.level
+    STOP_REQUESTED = "stop_requested"
+    ADAPTATION = "adaptation"  # a policy decision: data.action + data.reason_codes
+    BREAK_TAKEN = "break_taken"
+    BREAK_DECLINED = "break_declined"
+    ACTIVITY_ENDED = "activity_ended"  # data.outcome completed|stopped|tired|shortened
+    # Migration 0013: "Read aloud" pressed, i.e. the person asked to hear it again.
+    INSTRUCTIONS_REPEATED = "instructions_repeated"
+
+
 class ObservationStatus(StrEnum):
     """Caregiver observation workflow: open → reviewed → resolved."""
 
     OPEN = "open"
     REVIEWED = "reviewed"
     RESOLVED = "resolved"
+
+
+class ReviewItemStatus(StrEnum):
+    """Human review of an automated review prompt (migration 0011).
+
+    Nothing reaches a clinician as a concern until a caregiver confirms it, and a decision
+    always records who made it, when and why.
+    """
+
+    AWAITING_REVIEW = "awaiting_review"
+    CONFIRMED = "confirmed"  # caregiver: worth discussing with a clinician
+    DISMISSED = "dismissed"  # caregiver: explained (e.g. a visit, an illness, a new phone)

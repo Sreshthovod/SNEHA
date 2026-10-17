@@ -6,11 +6,15 @@ import {
   approveMemory,
   correctMemory,
   createMemory,
+  createMemoryLink,
   deleteMemory,
+  deleteMemoryLink,
+  getMemory,
   listMemories,
+  listMemoryLinks,
   rejectMemory,
 } from '../../api/memories'
-import type { Memory, MemoryKind, MemoryStatus } from '../../api/types'
+import type { Memory, MemoryKind, MemoryLink, MemoryLinkType, MemoryStatus } from '../../api/types'
 import { ProtectedImage } from '../../components/ProtectedImage'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -21,6 +25,7 @@ import { ActionError, EmptyState, ErrorState, Loading, Notice } from '../../comp
 import { Tabs } from '../../components/ui/Tabs'
 import { useAsync } from '../../hooks/useAsync'
 import { MEMORY_KIND_LABELS, MEMORY_STATUS_LABELS, options } from '../../lib/labels'
+import { activityUses, phoneStatus } from '../../lib/memoryUse'
 import { usePatient } from '../../state/patient'
 
 const FILTERS: Array<{ id: MemoryStatus | 'all'; label: string }> = [
@@ -45,6 +50,17 @@ export function MemoriesSection() {
     (signal) => listMemories(patient.id, filter === 'all' ? undefined : filter, signal),
     [patient.id, filter],
   )
+  // Every approved memory and every link, for the "How SNEHA uses this" panel.
+  const context = useAsync(
+    async (signal) => {
+      const [approved, links] = await Promise.all([
+        listMemories(patient.id, 'approved', signal),
+        listMemoryLinks(patient.id, signal),
+      ])
+      return { approved, links }
+    },
+    [patient.id, memories.data],
+  )
   const [creating, setCreating] = useState(false)
   const [message, setMessage] = useState<{ tone: 'success' | 'warning'; text: string } | null>(null)
 
@@ -67,6 +83,8 @@ export function MemoriesSection() {
           <li key={m.id}>
             <MemoryCard
               memory={m}
+              approved={context.data?.approved ?? []}
+              links={context.data?.links ?? []}
               canManage={isManager}
               onChanged={(text, tone = 'success') => {
                 setMessage({ text, tone })
@@ -121,10 +139,14 @@ export function MemoriesSection() {
 
 function MemoryCard({
   memory,
+  approved,
+  links,
   canManage,
   onChanged,
 }: {
   memory: Memory
+  approved: Memory[]
+  links: MemoryLink[]
   canManage: boolean
   onChanged: (text: string, tone?: 'success' | 'warning') => void
 }) {
@@ -174,10 +196,12 @@ function MemoryCard({
         <StatusBadge tone={tone} label={MEMORY_STATUS_LABELS[memory.status]} />{' '}
         <span className="field__hint">
           {MEMORY_KIND_LABELS[memory.kind]}
+          {memory.relationship ? ` · ${memory.relationship}` : ''}
           {memory.approx_year ? ` · around ${memory.approx_year}` : ''}
         </span>
       </p>
       {memory.description && <p>{memory.description}</p>}
+      <MemoryUsePanel memory={memory} approved={approved} links={links} canManage={canManage} onChanged={onChanged} />
       {memory.tags.length > 0 && <p className="field__hint">Tags: {memory.tags.join(', ')}</p>}
       {memory.review_note && <p className="field__hint">Note: {memory.review_note}</p>}
       {error && (
@@ -200,7 +224,8 @@ function MemoryCard({
           <Button variant="secondary" onClick={() => setEditing(true)} disabled={busy}>
             Correct
           </Button>
-          <Button variant="danger" onClick={() => setConfirmDelete(true)} disabled={busy}>
+          <span className="observation-actions__spacer" aria-hidden="true" />
+          <Button variant="danger-outline" onClick={() => setConfirmDelete(true)} disabled={busy}>
             Delete
           </Button>
         </div>
@@ -226,11 +251,11 @@ function MemoryCard({
         onClose={() => setConfirmDelete(false)}
         footer={
           <>
-            <Button variant="danger" onClick={remove} pending={busy}>
-              Delete permanently
-            </Button>
             <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
               Cancel
+            </Button>
+            <Button variant="danger" onClick={remove} pending={busy}>
+              Delete permanently
             </Button>
           </>
         }
@@ -263,9 +288,13 @@ function MemoryFormDialog({
     title: memory?.title ?? '',
     description: memory?.description ?? '',
     approx_year: memory?.approx_year?.toString() ?? '',
+    relationship: memory?.relationship ?? '',
     tags: memory?.tags.join(', ') ?? '',
     note: '',
   })
+  // One client ID per new memory: a double click or a retry after a lost response
+  // cannot create the memory twice (the server answers 409 id_conflict).
+  const [clientId] = useState(() => crypto.randomUUID())
   const [photo, setPhoto] = useState<File | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<ApiError | null>(null)
@@ -294,6 +323,7 @@ function MemoryFormDialog({
         title: form.title.trim(),
         description: form.description.trim() || null,
         approx_year: year,
+        relationship: form.kind === 'person' ? form.relationship.trim() || null : null,
         tags,
         ...(media ? { media_file_id: media.id } : {}),
       }
@@ -303,10 +333,13 @@ function MemoryFormDialog({
             expected_version: memory.version,
             correction_note: form.note.trim() || null,
           })
-        : await createMemory(patient.id, fields)
+        : await createMemory(patient.id, { ...fields, id: clientId })
       onSaved(saved)
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'version_conflict' && onConflict) {
+      if (!memory && e instanceof ApiError && e.code === 'id_conflict') {
+        // Saved by an earlier attempt whose response was lost: show that one.
+        onSaved(await getMemory(patient.id, clientId))
+      } else if (e instanceof ApiError && e.code === 'version_conflict' && onConflict) {
         onConflict(conflictMessage(e))
       } else {
         setError(e instanceof ApiError ? e : new ApiError('Could not save.', { status: null, code: 'unknown' }))
@@ -322,6 +355,15 @@ function MemoryFormDialog({
         <SelectField label="Type" value={form.kind} onChange={(e) => set('kind')(e.target.value)} options={options(MEMORY_KIND_LABELS)} />
         <TextField label="Title" hint="Short and familiar, e.g. “Aunt Rina at the tea garden”." value={form.title} onChange={(e) => set('title')(e.target.value)} error={errors.title} maxLength={120} required />
         <TextArea label="Description" hint="Optional. Up to 2000 characters." value={form.description} onChange={(e) => set('description')(e.target.value)} maxLength={2000} />
+        {form.kind === 'person' && (
+          <TextField
+            label={`How is this person related to ${patient.preferred_name ?? patient.display_name}?`}
+            hint="Optional, in your own words, e.g. “granddaughter”, “neighbour”. Used for gentle hints and story prompts. SNEHA never guesses this from a photo."
+            value={form.relationship}
+            onChange={(e) => set('relationship')(e.target.value)}
+            maxLength={60}
+          />
+        )}
         <TextField label="Around which year?" inputMode="numeric" value={form.approx_year} onChange={(e) => set('approx_year')(e.target.value)} error={errors.approx_year} />
         <TextField label="Tags" hint="Separate with commas." value={form.tags} onChange={(e) => set('tags')(e.target.value)} error={errors.tags} />
         <TextField
@@ -342,5 +384,121 @@ function MemoryFormDialog({
         </div>
       </form>
     </Dialog>
+  )
+}
+
+const LINK_LABELS: Record<MemoryLinkType, string> = {
+  person_in: 'is in',
+  located_at: 'is at',
+  part_of: 'is part of',
+  related_to: 'is related to',
+}
+
+/** Phone availability, activities this memory feeds, and its links to other memories. */
+function MemoryUsePanel({
+  memory,
+  approved,
+  links,
+  canManage,
+  onChanged,
+}: {
+  memory: Memory
+  approved: Memory[]
+  links: MemoryLink[]
+  canManage: boolean
+  onChanged: (text: string, tone?: 'success' | 'warning') => void
+}) {
+  const { patient } = usePatient()
+  const status = phoneStatus(memory, patient.has_paired_device)
+  const uses = activityUses(memory, approved)
+  const byId = new Map(approved.map((m) => [m.id, m]))
+  const mine = links.filter((l) => l.from_memory_id === memory.id || l.to_memory_id === memory.id)
+  const others = approved.filter((m) => m.id !== memory.id)
+  const [target, setTarget] = useState('')
+  const [type, setType] = useState<MemoryLinkType>('person_in')
+  const [error, setError] = useState<string | null>(null)
+
+  async function addLink() {
+    if (!target) return
+    setError(null)
+    try {
+      await createMemoryLink(patient.id, { from_memory_id: memory.id, to_memory_id: target, relation_type: type })
+      onChanged('Link added. Story time can now mention them together.')
+      setTarget('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add the link.')
+    }
+  }
+
+  return (
+    <details className="details memory-use">
+      <summary>
+        <span>How SNEHA uses this</span>
+        <span className="memory-use__state">{status.shared ? 'On the phone' : 'Not on the phone'}</span>
+      </summary>
+      <p className="field__hint">{status.text}</p>
+      {uses.length > 0 && (
+        <ul className="plain-list memory-use__list">
+          {uses.map((u) => (
+            <li key={u.title}>
+              <StatusBadge tone={u.ready ? 'success' : 'neutral'} label={u.ready ? 'Ready' : 'Not yet'} />{' '}
+              <strong>{u.title}</strong>
+              <br />
+              <span className="field__hint">{u.detail}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {memory.status === 'approved' && (
+        <>
+          <p className="memory-use__heading"><strong>Linked memories</strong></p>
+          {mine.length === 0 ? (
+            <p className="field__hint">None. Linking a person to an event or place lets story time ask about them together.</p>
+          ) : (
+            <ul className="plain-list">
+              {mine.map((l) => {
+                const from = l.from_memory_id === memory.id ? memory : byId.get(l.from_memory_id)
+                const to = l.to_memory_id === memory.id ? memory : byId.get(l.to_memory_id)
+                return (
+                  <li key={l.id}>
+                    {from?.title ?? 'A memory'} {LINK_LABELS[l.relation_type]} {to?.title ?? 'a memory'}
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        aria-label={`Remove link: ${from?.title ?? 'memory'} ${LINK_LABELS[l.relation_type]} ${to?.title ?? 'memory'}`}
+                        onClick={async () => {
+                          await deleteMemoryLink(patient.id, l.id)
+                          onChanged('Link removed.')
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+          {canManage && others.length > 0 && (
+            <div className="inline-fields">
+              <SelectField
+                label={`“${memory.title}”…`}
+                value={type}
+                onChange={(e) => setType(e.target.value as MemoryLinkType)}
+                options={(Object.keys(LINK_LABELS) as MemoryLinkType[]).map((k) => ({ value: k, label: LINK_LABELS[k] }))}
+              />
+              <SelectField
+                label="Other memory"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                options={[{ value: '', label: 'Choose…' }, ...others.map((m) => ({ value: m.id, label: m.title }))]}
+              />
+              <Button variant="secondary" onClick={addLink} disabled={!target}>Link</Button>
+            </div>
+          )}
+          {error && <p className="field__error" role="alert">{error}</p>}
+        </>
+      )}
+    </details>
   )
 }

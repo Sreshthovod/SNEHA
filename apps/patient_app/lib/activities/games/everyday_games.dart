@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/strings.dart';
 import '../activity.dart';
 import '../everyday_content.dart';
+import '../memory_content.dart';
 import '../rounds/choice_round.dart';
 import '../rounds/pairs_round.dart';
 import '../rounds/sequence_round.dart';
@@ -66,6 +67,17 @@ class SortIntoGroupsActivity extends CognitiveActivity {
   IconData get icon => Icons.dashboard_customize;
 
   @override
+  ContentChoice contentChoice(ActivityContent content) => canSortByKind(content)
+      ? ContentChoice(
+          personal: true,
+          reasons: withPreferredReason(content, [ContentReason.kindSorting]),
+        )
+      : const ContentChoice.generic([
+          ContentReason.genericFallback,
+          ContentReason.notEnoughPhotos,
+        ]);
+
+  @override
   List<RoundSpec> createRounds({
     required ActivityContent content,
     required int difficulty,
@@ -73,6 +85,9 @@ class SortIntoGroupsActivity extends CognitiveActivity {
     required AppStrings strings,
     LevelParams level = const LevelParams(),
   }) {
+    if (canSortByKind(content)) {
+      return _personalRounds(content, difficulty, random, strings, level);
+    }
     // Bundled default: two groups at difficulty 1, otherwise three.
     final groupCount = (level.intOf('groups') ?? (difficulty <= 1 ? 2 : 3))
         .clamp(2, everydayCategories.length);
@@ -94,6 +109,40 @@ class SortIntoGroupsActivity extends CognitiveActivity {
           options: [
             for (final g in groups)
               ChoiceOption(id: g, label: everydayCategories[g]!),
+          ],
+        ),
+    ];
+  }
+
+  /// "Is this a person or a place?" for the family's own photos, by the type
+  /// the caregiver chose. Groups and photos come only from approved memories.
+  List<RoundSpec> _personalRounds(
+    ActivityContent content,
+    int difficulty,
+    Random random,
+    AppStrings strings,
+    LevelParams level,
+  ) {
+    final kinds = sortableKinds(content);
+    final groupCount = (level.intOf('groups') ?? (difficulty <= 1 ? 2 : 3))
+        .clamp(MemoryRules.minSortKinds, kinds.length);
+    final groups = shuffled(kinds.keys, random).take(groupCount).toList();
+    final photos = [for (final g in groups) ...kinds[g]!];
+    final count = min(
+      level.intOf('items') ?? CognitiveActivity.roundCount(difficulty),
+      photos.length,
+    );
+    return [
+      for (final m in content.pickPreferred(photos, count, random))
+        ChoiceRoundSpec(
+          prompt: strings.t('game_sort_memory_q'),
+          promptImagePath: m.localPhotoPath,
+          promptImageLabel: strings.t('game_memory_photo'),
+          correctId: m.kind,
+          memoryId: m.id,
+          options: [
+            for (final g in groups)
+              ChoiceOption(id: g, label: strings.t('memory_kind_$g')),
           ],
         ),
     ];
@@ -181,6 +230,17 @@ class PicturePairsActivity extends CognitiveActivity {
   static int pairsFor(int difficulty) => (2 + difficulty).clamp(3, 6);
 
   @override
+  ContentChoice contentChoice(ActivityContent content) => canPairPhotos(content)
+      ? ContentChoice(
+          personal: true,
+          reasons: withPreferredReason(content, [ContentReason.personalPhotos]),
+        )
+      : const ContentChoice.generic([
+          ContentReason.genericFallback,
+          ContentReason.notEnoughPhotos,
+        ]);
+
+  @override
   List<RoundSpec> createRounds({
     required ActivityContent content,
     required int difficulty,
@@ -189,6 +249,28 @@ class PicturePairsActivity extends CognitiveActivity {
     LevelParams level = const LevelParams(),
   }) {
     final boards = difficulty <= 2 ? 2 : 3;
+    final pairs = level.intOf('pairs') ?? pairsFor(difficulty);
+    if (canPairPhotos(content)) {
+      // The family's own photos as the pictures (fewer pairs if fewer photos).
+      final photos = distinctPhotoMemories(content);
+      return [
+        for (var b = 0; b < boards; b++)
+          PairsRoundSpec([
+            for (final m in content.pickPreferred(
+              photos,
+              pairs.clamp(2, photos.length),
+              random,
+            ))
+              PairCard(
+                m.id,
+                m.title,
+                Icons.photo,
+                imagePath: m.localPhotoPath,
+                memoryId: m.id,
+              ),
+          ], random),
+      ];
+    }
     return [
       for (var b = 0; b < boards; b++)
         PairsRoundSpec(

@@ -12,6 +12,7 @@ from app.api.routes import (
     memories,
     patients,
     personalization,
+    review,
     speech,
     sync,
 )
@@ -29,6 +30,7 @@ for module in (
     activities,
     care,
     analytics,
+    review,
     conversation,
     files,
     speech,

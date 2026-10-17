@@ -248,3 +248,116 @@ def test_due_reports_script_entry_point(api: Api, settings, monkeypatch, capsys)
 def test_due_reports_reject_bad_period(api: Api, settings) -> None:
     with pytest.raises(ValueError):
         generate_due_reports(api.db, settings, period_days=7)
+
+
+# ---------------------------------------------------------------- alignment: three parts
+
+
+@pytest.fixture
+def uncompressed(monkeypatch):
+    """Store report PDFs uncompressed so the downloaded file's text can be checked."""
+    original = report_service.build_pdf
+    monkeypatch.setattr(
+        report_service, "build_pdf", lambda data, **kw: original(data, compress=False, **kw)
+    )
+
+
+def download(api: Api, owner, report: dict) -> bytes:
+    return api.client.get(
+        f"/api/v1/files/{report['file_id']}/content", headers=owner.headers
+    ).content
+
+
+def test_report_separates_records_interpretations_and_caregiver_decisions(
+    api: Api, family, uncompressed
+) -> None:
+    owner, pid = family
+    first = api.client.post(f"/api/v1/patients/{pid}/reports", json=BODY, headers=owner.headers)
+    pdf = download(api, owner, first.json())
+    parts = [b"Part 1. What was recorded", b"Part 2. What the automatic rules", b"Part 3. What a"]
+    positions = [pdf.find(p) for p in parts]
+    assert all(i > 0 for i in positions) and positions == sorted(positions), positions
+    assert b"Awaiting caregiver review. Not a concern unless confirmed." in pdf
+    assert b"Nothing has been confirmed by a caregiver for this period." in pdf
+
+    # The report created review items; a caregiver confirms one and dismisses another.
+    items = api.client.get(f"/api/v1/patients/{pid}/review-items", headers=owner.headers).json()
+    by_rule = {i["rule_id"]: i for i in items}
+    assert "ACCURACY_LOWER_THAN_USUAL" in by_rule
+    api.client.post(
+        f"/api/v1/patients/{pid}/review-items/{by_rule['ACCURACY_LOWER_THAN_USUAL']['id']}/decision",
+        json={"decision": "confirmed", "reason": "Synthetic: also misplacing keys at home"},
+        headers=owner.headers,
+    )
+    others = [i for i in items if i["rule_id"] != "ACCURACY_LOWER_THAN_USUAL"]
+    for i in others:
+        api.client.post(
+            f"/api/v1/patients/{pid}/review-items/{i['id']}/decision",
+            json={"decision": "dismissed", "reason": "Synthetic: visiting relatives that week"},
+            headers=owner.headers,
+        )
+
+    # Ready reports are never rewritten; a new report shows the decisions.
+    again = api.client.post(f"/api/v1/patients/{pid}/reports", json=BODY, headers=owner.headers)
+    pdf = download(api, owner, again.json())
+    confirmed_at = pdf.find(b"Confirmed as worth discussing with a clinician")
+    assert confirmed_at > pdf.find(b"Part 3. What a")
+    assert b"Synthetic: also misplacing keys at home" in pdf
+    assert b"Confirmed by a caregiver \\(see Part 3\\)." in pdf
+    if others:
+        assert b"Dismissed by a caregiver" in pdf
+        assert b"Synthetic: visiting relatives that week" in pdf
+    for banned in [b"dementia", b"decline", b"impairment", b"severity", b"diagnosed"]:
+        assert banned not in pdf.lower()
+
+
+def test_report_counts_tiredness_by_who_reported_it(api: Api, uncompressed) -> None:
+    from app.models.care import CaregiverObservation
+    from app.models.enums import FatigueLevel, ObservationCategory, RecordSource
+    from tests.analytics_fixtures import local
+
+    owner = api.user()
+    pid = api.patient(owner, display_name="Synthetic Tired Patient")
+    seed(
+        api.db, pid, [R(PERIOD_START, fatigue=True, abandoned=True)], end_reason="fatigue_detected"
+    )
+    for source, level, day in [
+        (RecordSource.DEVICE, FatigueLevel.SEVERE, 22),
+        (RecordSource.DASHBOARD, FatigueLevel.MILD, 23),
+        (RecordSource.DASHBOARD, None, 24),
+    ]:
+        api.db.add(
+            CaregiverObservation(
+                patient_id=pid,
+                observed_at=local(PERIOD_START.replace(day=day), time(15)),
+                category=ObservationCategory.FATIGUE,
+                fatigue_level=level,
+                source=source,
+                note="Synthetic tiredness note",
+            )
+        )
+    api.db.commit()
+    report = api.client.post(
+        f"/api/v1/patients/{pid}/reports", json=BODY, headers=owner.headers
+    ).json()
+    pdf = download(api, owner, report)
+    assert b"Tiredness reports" in pdf
+    assert b"A caregiver, on the person's phone" in pdf
+    assert b"\\(very tired\\)" in pdf
+    assert b"\\(a little tired\\)" in pdf
+    assert b"No tiredness was reported" not in pdf
+
+
+def test_report_with_no_data_says_so_and_raises_nothing(api: Api, uncompressed) -> None:
+    owner = api.user()
+    pid = api.patient(owner)
+    report = api.client.post(
+        f"/api/v1/patients/{pid}/reports", json=BODY, headers=owner.headers
+    ).json()
+    pdf = download(api, owner, report)
+    assert b"No activity was recorded in this period" in pdf
+    assert b"No tiredness was reported in this period." in pdf
+    assert b"Nothing has been confirmed by a caregiver for this period." in pdf
+    assert b"Too little data is never treated as a change." in pdf
+    items = api.client.get(f"/api/v1/patients/{pid}/review-items", headers=owner.headers).json()
+    assert [i["rule_id"] for i in items] == ["DATA_GAP"], "only the missing data is pointed out"

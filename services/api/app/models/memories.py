@@ -29,6 +29,9 @@ class MemoryItem(IdMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     approx_year: Mapped[int | None] = mapped_column(Integer)
+    # Person memories only (migration 0012): how this person is related to the patient,
+    # exactly as the caregiver states it ("granddaughter", "neighbour"). Never inferred.
+    relationship: Mapped[str | None] = mapped_column(String(60))
     tags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     media_file_id: Mapped[str | None] = mapped_column(
         ForeignKey("stored_files.id", ondelete="SET NULL")

@@ -1,5 +1,7 @@
 # AI models, providers and fallbacks
 
+> For an overview of every AI/ML-related feature, what kind of method it is and how it fails, see [ai-and-ml-methods.md](ai-and-ml-methods.md). The personalization engine is now ALGORITHM_VERSION 1.1.0 (caregiver "very tired" → rest) and the phone adds an in-activity comfort policy.
+
 ## Principles (enforced in code and tests)
 
 1. **Everything essential works without AI and without the internet**: activities, approved

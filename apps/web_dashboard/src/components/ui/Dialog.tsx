@@ -25,8 +25,12 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
     if (!open) return
     const opener = document.activeElement as HTMLElement | null
     const panel = panelRef.current
-    const first = panel?.querySelector<HTMLElement>(FOCUSABLE)
-    ;(first ?? panel)?.focus()
+    // Start on the first form field, else the title, so "Close" is not the first thing heard.
+    const field = panel?.querySelector<HTMLElement>(
+      '.dialog__body input:not([disabled]), .dialog__body select:not([disabled]), .dialog__body textarea:not([disabled])',
+    )
+    const heading = panel?.querySelector<HTMLElement>('.dialog__title')
+    ;(field ?? heading ?? panel)?.focus()
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -66,11 +70,11 @@ export function Dialog({ open, title, onClose, children, footer }: DialogProps) 
         tabIndex={-1}
       >
         <div className="dialog__header">
-          <h2 id={titleId} className="dialog__title">
+          <h2 id={titleId} className="dialog__title" tabIndex={-1}>
             {title}
           </h2>
-          <Button variant="ghost" onClick={onClose} aria-label="Close dialog">
-            ✕
+          <Button variant="ghost" className="dialog__close" onClick={onClose} aria-label="Close dialog">
+            <span aria-hidden="true">✕</span>
           </Button>
         </div>
         <div className="dialog__body">{children}</div>

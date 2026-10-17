@@ -184,3 +184,46 @@ def test_relationship_rules(api: Api) -> None:
     assert dup.status_code == 409
     self_link = api.client.post(url, json={**body, "to_memory_id": a["id"]}, headers=owner.headers)
     assert self_link.status_code == 422
+
+
+# ---------------------------------------------------------------- relationship (0012)
+
+
+def test_relationship_is_for_people_and_reaches_the_phone_only_when_approved(api: Api) -> None:
+    owner = api.user()
+    pid = api.patient(owner)
+    device = api.pair_device(owner, pid)
+    base = f"/api/v1/patients/{pid}/memories"
+    bad = api.client.post(
+        base,
+        json={"kind": "place", "title": "Synthetic garden", "relationship": "aunt"},
+        headers=owner.headers,
+    )
+    assert bad.status_code == 422
+    person = api.memory(owner, pid, title="Synthetic Mina", relationship="granddaughter")
+    assert person["relationship"] == "granddaughter"
+
+    helper = api.user()
+    api.add_caregiver(owner, pid, helper)
+    pending = api.memory(helper, pid, title="Synthetic cousin", relationship="cousin")
+    assert pending["status"] == "pending_approval"
+
+    pulled = api.client.get("/api/v1/sync/pull?since=0", headers=device.headers).json()
+    upserts = {
+        c["entity_id"]: c["data"]
+        for c in pulled["changes"]
+        if c["entity_type"] == "memory_item" and c["operation"] == "upsert"
+    }
+    assert upserts[person["id"]]["relationship"] == "granddaughter"
+    assert pending["id"] not in upserts, "unapproved memories never reach the phone"
+
+    # Re-typed as a place: the relationship goes with it; clearing works too.
+    url = f"{base}/{person['id']}"
+    moved = api.client.patch(
+        url, json={"expected_version": 1, "kind": "place"}, headers=owner.headers
+    )
+    assert moved.json()["relationship"] is None
+    wrong = api.client.patch(
+        url, json={"expected_version": 2, "relationship": "aunt"}, headers=owner.headers
+    )
+    assert wrong.status_code == 422

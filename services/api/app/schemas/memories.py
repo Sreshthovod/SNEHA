@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import Field, StringConstraints
+from pydantic import Field, StringConstraints, model_validator
 
 from app.models.enums import MemoryKind, MemoryRelationType, MemoryStatus, RecordSource
 from app.schemas.base import RecordId, RequestModel, ResponseModel, ShortText, Tag
@@ -10,6 +10,11 @@ Description = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
 ]
 Note = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+Relationship = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+RELATIONSHIP_DESCRIPTION = (
+    "Person memories only: how this person is related to the patient, as the caregiver "
+    "states it (e.g. 'granddaughter'). Used for gentle hints and story prompts."
+)
 
 
 class MemoryCreate(RequestModel):
@@ -18,8 +23,15 @@ class MemoryCreate(RequestModel):
     title: ShortText
     description: Description | None = None
     approx_year: int | None = Field(default=None, ge=1900, le=2100)
+    relationship: Relationship | None = Field(default=None, description=RELATIONSHIP_DESCRIPTION)
     tags: list[Tag] = Field(default_factory=list, max_length=20)
     media_file_id: RecordId | None = None
+
+    @model_validator(mode="after")
+    def _relationship_only_for_people(self) -> "MemoryCreate":
+        if self.relationship is not None and self.kind is not MemoryKind.PERSON:
+            raise ValueError("relationship is only for person memories")
+        return self
 
 
 class MemoryCorrection(RequestModel):
@@ -30,6 +42,9 @@ class MemoryCorrection(RequestModel):
     title: ShortText | None = None
     description: Description | None = None
     approx_year: int | None = Field(default=None, ge=1900, le=2100)
+    relationship: Relationship | None = Field(
+        default=None, description=RELATIONSHIP_DESCRIPTION + " Send null to clear."
+    )
     tags: list[Tag] | None = Field(default=None, max_length=20)
     media_file_id: RecordId | None = None
     correction_note: Note | None = None
@@ -47,6 +62,7 @@ class MemoryOut(ResponseModel):
     title: str
     description: str | None
     approx_year: int | None
+    relationship: str | None = None
     tags: list[str]
     media_file_id: str | None
     status: MemoryStatus

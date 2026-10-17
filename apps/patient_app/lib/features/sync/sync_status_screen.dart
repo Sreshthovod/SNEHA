@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../app_services.dart';
-import '../../core/connectivity/server_status.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../data/repositories/sync_service.dart';
 import '../../ui/widgets.dart';
@@ -112,14 +111,20 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                     connection: services.serverStatus.connection,
                   ),
                 ),
-                Text(s.t('sync_body'), style: theme.textTheme.bodyLarge),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    s.t('sync_body'),
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                ),
                 SnehaCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         s.t('sync_pending', {'count': status.pending}),
-                        style: theme.textTheme.titleLarge,
+                        style: theme.textTheme.titleMedium,
                       ),
                       if (status.needsAttention > 0)
                         Text(
@@ -183,6 +188,7 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                   NoticeBanner(
                     message: s.t('sync_repair'),
                     icon: Icons.link_off,
+                    tone: NoticeTone.problem,
                   ),
                   BigButton(
                     label: s.t('profiles_add'),
@@ -203,7 +209,9 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                     icon: _report!.outcome == SyncOutcome.success
                         ? Icons.check_circle
                         : Icons.cloud_off,
-                    positive: _report!.outcome == SyncOutcome.success,
+                    tone: _report!.outcome == SyncOutcome.success
+                        ? NoticeTone.positive
+                        : NoticeTone.problem,
                   ),
                 ListenableBuilder(
                   listenable: services.sync,
@@ -217,9 +225,6 @@ class _SyncStatusScreenState extends State<SyncStatusScreen> {
                         : _syncNow,
                   ),
                 ),
-                if (services.serverStatus.connection ==
-                    ServerConnection.offline)
-                  const SizedBox.shrink(),
               ],
             ),
     );

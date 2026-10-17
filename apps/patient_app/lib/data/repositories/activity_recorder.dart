@@ -54,6 +54,27 @@ class ActivityOutcome {
 
 const engagementValues = {'enjoyed', 'neutral', 'not_enjoyed'};
 
+const fatigueLevels = {'mild', 'severe'};
+
+/// Must match ActivityEventType in services/api/app/models/enums.py.
+const activityEventTypes = {
+  'activity_started',
+  'attempt',
+  'hint_requested',
+  'hint_auto',
+  'round_solved',
+  'round_skipped',
+  'paused',
+  'resumed',
+  'fatigue_reported',
+  'stop_requested',
+  'adaptation',
+  'break_taken',
+  'break_declined',
+  'activity_ended',
+  'instructions_repeated',
+};
+
 /// Conversation METADATA only. There is deliberately no field for words spoken
 /// or typed: transcripts are never stored or synced.
 class ConversationSummary {
@@ -261,6 +282,90 @@ class ActivityRecorder {
         },
       );
     });
+  }
+
+  /// Appends one in-activity event (schemas/events.py). Stored on the phone
+  /// and queued for sync in one transaction, so it is never held only in
+  /// screen state. [data] must contain only the small typed values the server
+  /// accepts: no free text.
+  Future<String> recordEvent(
+    String patientId, {
+    required String sessionId,
+    required String activityId,
+    required int seq,
+    required String eventType,
+    int? roundIndex,
+    Map<String, Object> data = const {},
+  }) async {
+    if (!activityEventTypes.contains(eventType)) {
+      throw ArgumentError.value(eventType, 'eventType');
+    }
+    final id = _uuid.v4();
+    final occurredAt = isoUtc(_clock());
+    final payload = {
+      'id': id,
+      'session_id': sessionId,
+      'activity_id': activityId,
+      'seq': seq,
+      'event_type': eventType,
+      'occurred_at': occurredAt,
+      'round_index': ?roundIndex,
+      'data': data,
+    };
+    await _local.db.transaction((txn) async {
+      await txn.insert('activity_events', {
+        'id': id,
+        'patient_id': patientId,
+        'session_id': sessionId,
+        'activity_id': activityId,
+        'seq': seq,
+        'event_type': eventType,
+        'occurred_at': occurredAt,
+        'round_index': roundIndex,
+        'data_json': jsonEncode(data),
+      });
+      await _enqueue(
+        txn,
+        patientId: patientId,
+        entityType: 'activity_event',
+        entityId: id,
+        data: payload,
+      );
+    });
+    return id;
+  }
+
+  /// A caregiver's tiredness report made on this phone. Kept locally so the
+  /// phone's engine and any running activity respect it offline, and synced as
+  /// a fatigue observation (level and time only; the server writes a fixed
+  /// note). The person's own "I'm tired" is recorded on the result and the
+  /// session instead, so it is never counted twice.
+  Future<String> reportCaregiverFatigue(
+    String patientId, {
+    required String level,
+  }) async {
+    if (!fatigueLevels.contains(level)) {
+      throw ArgumentError.value(level, 'level');
+    }
+    final id = _uuid.v4();
+    final at = isoUtc(_clock());
+    await _local.db.transaction((txn) async {
+      await txn.insert('fatigue_reports', {
+        'id': id,
+        'patient_id': patientId,
+        'level': level,
+        'source': 'caregiver_phone',
+        'reported_at': at,
+      });
+      await _enqueue(
+        txn,
+        patientId: patientId,
+        entityType: 'fatigue_report',
+        entityId: id,
+        data: {'id': id, 'level': level, 'reported_at': at},
+      );
+    });
+    return id;
   }
 
   Future<void> recordConversation(

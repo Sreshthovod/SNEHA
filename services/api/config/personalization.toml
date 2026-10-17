@@ -4,7 +4,7 @@
 # They are NOT clinical thresholds and say nothing about any medical condition.
 # Bump `config_version` on every change; it is stored with each recommendation.
 
-config_version = "2026.10.1"
+config_version = "2026.10.3"
 
 [difficulty]
 success_score = 0.8              # score at/above this counts towards a step up...
@@ -40,6 +40,32 @@ feedback_window_hours = 3        # fatigue reported in results / fatigue-ended s
 observation_window_hours = 8     # caregiver "fatigue" observations this recent
 low_effort_slugs = ["story-time", "picture-pairs", "name-the-object"]
 break_minutes = 10
+# A caregiver's report on the phone or dashboard has a level (mild | severe). "Very tired"
+# (severe) within the observation window means a break, never another activity.
+caregiver_severe_action = "end_session"  # in a running activity: "end_session" or "offer_break"
+
+[in_session]
+# Comfort rules INSIDE a running activity (phone only, offline). Checked after every answer
+# and every round. They only ever make an activity easier, shorter or stop it; they never
+# extend it. Response time is recorded but deliberately not used here: slow answers have too
+# many everyday causes to act on within one activity.
+auto_hint_after_errors = 2              # wrong answers in one round before a hint is shown automatically
+auto_hint_after_errors_assisted = 1     # ...when the engine asked for hints or the person is tired
+struggled_round_errors = 2              # a round with this many wrong answers (or skipped) counts as struggled
+shorten_after_struggled_rounds = 2      # this many struggled rounds in a row: finish after one more round
+break_after_struggled_rounds = 3        # this many struggled rounds in the activity: offer a rest (once)
+mild_fatigue_max_remaining_rounds = 1   # "a little tired": at most this many more rounds, with hints
+
+[support]
+# Support that follows what the person needed last time (engine 1.2.0). Each rule needs a
+# pattern over several results, so one hard day never changes anything on its own.
+hint_window = 3                     # this activity's last N finished results...
+hint_heavy_min_hints = 2            # ...that used at least this many hints...
+hint_heavy_results = 2              # ...in at least this many results → hints on next time
+struggle_at_easiest_results = 2     # struggles in a row at an activity's EASIEST level...
+struggle_at_easiest_penalty = 50    # ...lower its score so a different, gentler activity is preferred
+instruction_window = 3              # last N results (any activity)...
+read_aloud_after_repeats = 3        # ...with this many "Read aloud" presses in total → read questions first
 
 [memory]
 min_photo_memories = 3           # photo-recall needs this many approved memories with photos

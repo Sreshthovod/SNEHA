@@ -474,7 +474,13 @@ class SyncService extends ChangeNotifier {
         final oldFile = old.isEmpty
             ? null
             : old.first['media_file_id'] as String?;
-        if (c.isDelete) {
+        // Defence in depth: the server only sends approved memories of this
+        // patient. Anything else is treated as a delete, never stored.
+        final unusable =
+            !c.isDelete &&
+            (data!['status'] != 'approved' || data['patient_id'] != patientId);
+        if (unusable) debugPrint('Sync: refused a non-approved memory');
+        if (c.isDelete || unusable) {
           await txn.delete(
             'memories',
             where: 'id = ? AND patient_id = ?',
@@ -497,6 +503,7 @@ class SyncService extends ChangeNotifier {
           'title': m.title,
           'description': m.description,
           'approx_year': m.approxYear,
+          'relationship': m.relationship,
           'tags_json': jsonEncode(m.tags),
           'media_file_id': m.mediaFileId,
           'version': m.version,
@@ -546,6 +553,35 @@ class SyncService extends ChangeNotifier {
             'rules_version': data['rules_version'],
             'state_json': jsonEncode(data['state']),
             'state_updated_at': data['state_updated_at'],
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      case 'fatigue_report':
+        // A caregiver's tiredness report (level and time only). Replaces a
+        // report made on this phone with the same ID: same record.
+        if (c.isDelete) {
+          await txn.delete(
+            'fatigue_reports',
+            where: 'id = ? AND patient_id = ?',
+            whereArgs: [c.entityId, patientId],
+          );
+        } else {
+          final local = await txn.query(
+            'fatigue_reports',
+            columns: ['source'],
+            where: 'id = ?',
+            whereArgs: [c.entityId],
+          );
+          await txn.insert('fatigue_reports', {
+            'id': c.entityId,
+            'patient_id': patientId,
+            // No level given on the dashboard = treat as "a little tired".
+            'level': data!['level'] as String? ?? 'mild',
+            'source': local.isEmpty
+                ? (data['source'] == 'device'
+                      ? 'caregiver_phone'
+                      : 'caregiver_dashboard')
+                : local.first['source'],
+            'reported_at': data['observed_at'],
           }, conflictAlgorithm: ConflictAlgorithm.replace);
         }
       default:

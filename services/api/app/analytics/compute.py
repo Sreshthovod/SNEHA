@@ -557,15 +557,28 @@ def review_flags(
         tired = period_results[period_results["fatigue_reported"].astype(bool)]
         signal_days += list(tired["day"])
         tired_sessions = set(tired["session_id"])
+    fatigue_obs = (
+        observations[observations["category"] == "fatigue"] if len(observations) else observations
+    )
     if len(sessions):
         # One "I'm tired" press marks the result AND ends the session: count it once.
         ended = sessions[
             (sessions["end_reason"] == "fatigue_detected") & ~sessions["id"].isin(tired_sessions)
         ]
+        # A caregiver's "very tired" on the phone ends the session AND is stored as an
+        # observation: count that once too (the observation is kept, the session dropped).
+        if len(ended) and len(fatigue_obs):
+            observed = pd.to_datetime(fatigue_obs["observed_at"], utc=True)
+            ended = ended[
+                [
+                    not (
+                        (observed >= pd.Timestamp(row.started_at))
+                        & (observed <= pd.Timestamp(row.ended_at) + pd.Timedelta(minutes=2))
+                    ).any()
+                    for row in ended.itertuples()
+                ]
+            ]
         signal_days += list(ended["day"])
-    fatigue_obs = (
-        observations[observations["category"] == "fatigue"] if len(observations) else observations
-    )
     if len(fatigue_obs):
         signal_days += list(fatigue_obs["day"])
     if (

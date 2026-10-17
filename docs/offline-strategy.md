@@ -19,6 +19,8 @@ Each entity has exactly one writer, so most conflicts cannot happen.
 |---|---|---|
 | Activity sessions, activity results | Device (or dashboard for supervised sessions) | push |
 | Conversation records (metadata only) | Device | push |
+| Activity events (answers, hints, tiredness, decisions; no free text) | Device | push, deduplicated by event ID |
+| Caregiver tiredness reports | Device (caregiver button) **or** dashboard | push as a fatigue observation; fatigue observations pulled as `fatigue_report` (level, time, source; never the note) |
 | Personalization state | Device (rules engine) | push, and echoed back on pull |
 | Memory items (approved only), memory relationships | Dashboard (caregivers) | pull |
 | Routine items | Dashboard | pull |

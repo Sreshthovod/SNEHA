@@ -70,6 +70,11 @@ class RecommendationOut(BaseModel):
     level_parameters: dict[str, Any] | None
     instructions: str | None
     hints_enabled: bool
+    read_aloud_first: bool = Field(
+        default=False,
+        description="Read each question aloud when it appears (the person often asked to "
+        "hear it again). Applied only if read-aloud is switched on and a voice exists.",
+    )
     break_minutes: int | None
     reason_codes: list[str]
     supporting: list[SupportOut]

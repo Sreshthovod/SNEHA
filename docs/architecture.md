@@ -65,11 +65,12 @@ through the sync API. See [offline-strategy.md](offline-strategy.md).
 main.py           create_app(): middleware (CORS, body-size limit, request ID), error handlers
 core/             config, errors, security (argon2id, tokens), rate limit, body limit, time, ids
 db/               Base + naming convention, UTCDateTime/enum types, sessions, migration helpers
-models/           SQLAlchemy models (21 tables)
+models/           SQLAlchemy models (23 tables)
 schemas/          Pydantic request/response models = the API contract
 services/         access (authorization), auth, audit, activities, sync, files, history, changes
 api/routes/       thin HTTP handlers, one module per area
-migrations/       Alembic 0001–0007 (schema, catalog seeds, personalization, observation workflow, providers)
+migrations/       Alembic 0001–0013 (… 0009 activity events, 0010 fatigue level + fatigue sync, 0011 review items, 0012 memory relationship, 0013 instructions_repeated event)
+review/           review items: automated prompts → caregiver decision → clinician (confirmed only)
 config/           personalization.toml, activities.toml, analytics.toml (versioned thresholds)
 ```
 
@@ -79,11 +80,12 @@ config/           personalization.toml, activities.toml, analytics.toml (version
 |---|---|
 | Identity | `users`, `auth_sessions`, `device_pairing_codes` |
 | Patients and access | `patient_profiles`, `caregiver_relationships`, `clinician_access_grants`, `consent_records` |
-| Activities | `activity_definitions`, `activity_sessions`, `activity_results`, `personalization_states` |
+| Activities | `activity_definitions`, `activity_sessions`, `activity_results`, `activity_events` (per answer, hint, pause, tiredness, stop and in-activity decision), `personalization_states` |
 | Memory Bank | `memory_items`, `memory_relationships`, `stored_files` |
 | Care | `routine_items`, `caregiver_observations`, `conversation_records` (metadata only), `reports` |
 | Personalization | `patient_preferences`, `activity_recommendations` (every recommendation with its explanation) |
-| Observation workflow | `observation_revisions` (append-only correction history) |
+| Observation workflow | `observation_revisions` (append-only correction history); `caregiver_observations.fatigue_level` |
+| Human review | `review_items` (snapshot of an automated prompt's evidence + caregiver decision and reason) |
 | Sync and audit | `sync_changes` (outbound log), `sync_mutations` (inbound receipts), `audit_events` |
 
 Conventions: UUID string primary keys (clients may generate them offline); timezone-aware
@@ -115,3 +117,63 @@ See [privacy-and-safety.md](privacy-and-safety.md#authentication) for details.
 
 No relationship → **404** (patient IDs cannot be probed). Relationship without the
 permission → **403**. Every denial is audited.
+
+## Core workflow after the alignment work (2026-10-18)
+
+```
+Caregiver (dashboard)                Phone (offline-first)                         Server
+──────────────────────               ─────────────────────                         ──────
+memories → approve ──── pull ──────▶ approved memories + photos
+fatigue note (level) ── pull ──────▶ fatigue_reports (level, time; no note)
+                                     engine (Dart port): next activity, level,
+                                       hints, preferred memory IDs, rest
+                                     runner: every answer/hint/pause/report ──▶ activity_events
+                                       → session_policy: hint · shorten ·         (push, deduped
+                                         offer rest · end   (stop always wins)     by event ID)
+                                     caregiver button: a little / very tired ──▶ fatigue observation
+                                     results + sessions ─────────────── push ──▶ analytics (own baseline)
+analytics → review items ◀───────────────────────────────────────────────────── scan (rules)
+confirm / dismiss + reason ──────────────────────────────────────────────────▶ clinician sees confirmed only
+8–9 day PDF: Part 1 recorded · Part 2 automated prompts · Part 3 caregiver-confirmed
+```
+
+What runs where and why is in [ai-and-ml-methods.md](ai-and-ml-methods.md); safety rules in
+[safety-and-privacy.md](safety-and-privacy.md).
+
+## Memory-based activities (2026-10-18)
+
+```
+Caregiver: memory (kind, title, description, year, relationship*, tags, photo) + links
+      │ approve                              * person memories only, never inferred
+      ▼
+Server ── pull (approved only) ──▶ Phone SQLite: memories (+ cached photo path), memory_links
+                                          │
+                                          ▼
+            engine (unchanged): which activity + preferred memory IDs
+                                          │
+                                          ▼
+      lib/activities/memory_content.dart: per activity, personal or generic + reason codes
+        photo recall · familiar faces (relationship hint) · picture pairs (family photos)
+        · sorting by type · story time (prompts from approved fields and links)
+                                          │
+                                          ▼
+      runner / story time ── activity_started {memory_ids, content_source, reason_codes}
+                          ── attempt / round_* {memory_id} ──▶ push ──▶ activity_events
+                                                                          │
+      Dashboard timeline: memory titles for the family; "a family memory" for clinicians ◀┘
+```
+
+Only content that is on the phone is used. A photo counts only once its file is cached, so
+offline behaviour matches the cache.
+
+## Adaptation loop (engine 1.2.0)
+
+```
+run (phone): answers, hints, "Read aloud" presses, tiredness, stop ──▶ events + result (SQLite → sync)
+        ▲                                                                   │
+        │ difficulty → level parameters (fewer options when easier)         ▼
+        │ hints_enabled → first hint after 1 wrong answer          engine (phone offline / server)
+        │ read_aloud_first → each question read aloud              stop > tiredness > support > variety
+        └──────────────────── suggestion + reason codes ◀───────────────────┘
+                              (recorded on activity_started with decided_on)
+```

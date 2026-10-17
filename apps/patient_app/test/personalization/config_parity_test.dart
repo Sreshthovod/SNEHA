@@ -116,7 +116,8 @@ void main() {
     expect(f['observation_window_hours'], c.fatigue.observationWindowHours);
     expect(f['low_effort_slugs'], c.fatigue.lowEffortSlugs);
     expect(f['break_minutes'], c.fatigue.breakMinutes);
-    expect(f.length, 4);
+    expect(f['caregiver_severe_action'], c.fatigue.caregiverSevereAction);
+    expect(f.length, 5);
     final m = toml['memory']!;
     expect(m['min_photo_memories'], c.memory.minPhotoMemories);
     expect(m['min_person_photo_memories'], c.memory.minPersonPhotoMemories);
@@ -125,6 +126,34 @@ void main() {
     expect(m['items_per_activity'], c.memory.itemsPerActivity);
     expect(m['recent_use_recommendations'], c.memory.recentUseRecommendations);
     expect(m.length, 6);
+  });
+
+  test('in-session rules match', () {
+    final i = toml['in_session']!;
+    final r = c.inSession;
+    expect(i['auto_hint_after_errors'], r.autoHintAfterErrors);
+    expect(i['auto_hint_after_errors_assisted'], r.autoHintAfterErrorsAssisted);
+    expect(i['struggled_round_errors'], r.struggledRoundErrors);
+    expect(i['shorten_after_struggled_rounds'], r.shortenAfterStruggledRounds);
+    expect(i['break_after_struggled_rounds'], r.breakAfterStruggledRounds);
+    expect(
+      i['mild_fatigue_max_remaining_rounds'],
+      r.mildFatigueMaxRemainingRounds,
+    );
+    expect(i.length, 6, reason: 'a new in-session key needs porting');
+  });
+
+  test('support rules match', () {
+    final t = toml['support']!;
+    final r = c.support;
+    expect(t['hint_window'], r.hintWindow);
+    expect(t['hint_heavy_min_hints'], r.hintHeavyMinHints);
+    expect(t['hint_heavy_results'], r.hintHeavyResults);
+    expect(t['struggle_at_easiest_results'], r.struggleAtEasiestResults);
+    expect(t['struggle_at_easiest_penalty'], r.struggleAtEasiestPenalty);
+    expect(t['instruction_window'], r.instructionWindow);
+    expect(t['read_aloud_after_repeats'], r.readAloudAfterRepeats);
+    expect(t.length, 7, reason: 'a new support key needs porting');
   });
 
   test('interest tags and content languages match', () {

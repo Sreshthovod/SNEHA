@@ -1,18 +1,31 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Date,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, CreatedAtMixin, IdMixin, TimestampMixin
 from app.db.types import UTCDateTime, str_enum
 from app.models.enums import (
     ConversationProviderUsed,
+    FatigueLevel,
     Language,
     ObservationCategory,
     ObservationStatus,
     RecordSource,
     ReportStatus,
+    ReviewItemStatus,
 )
 
 
@@ -52,6 +65,10 @@ class CaregiverObservation(IdMixin, CreatedAtMixin, Base):
         str_enum(ObservationCategory, "observation_category"), nullable=False
     )
     note: Mapped[str] = mapped_column(Text, nullable=False)
+    # Only for category "fatigue" (migration 0010); NULL = level not given.
+    fatigue_level: Mapped[FatigueLevel | None] = mapped_column(
+        str_enum(FatigueLevel, "fatigue_level")
+    )
     # Workflow (Stage 6). Every step records who and when.
     source: Mapped[RecordSource] = mapped_column(
         str_enum(RecordSource, "record_source"), default=RecordSource.DASHBOARD, nullable=False
@@ -146,3 +163,44 @@ class Report(IdMixin, TimestampMixin, Base):
     automated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Versions of the analytics config/method used, for reproducibility.
     method_version: Mapped[str | None] = mapped_column(String(40))
+
+
+class ReviewItem(IdMixin, TimestampMixin, Base):
+    """An automated review prompt kept for human review (migration 0011).
+
+    A snapshot of the rule's evidence for one period, so the caregiver decides on exactly
+    what was shown. Prompts are descriptive and never a diagnosis; only a caregiver's
+    confirmation makes one visible to clinicians.
+    """
+
+    __tablename__ = "review_items"
+    __table_args__ = (
+        UniqueConstraint("patient_id", "rule_id", "period_start", "period_end"),
+        CheckConstraint("period_end >= period_start", name="period_order"),
+        CheckConstraint(
+            "(status = 'awaiting_review') = (decided_at IS NULL)", name="decision_recorded"
+        ),
+        Index("ix_review_items_patient_status", "patient_id", "status"),
+    )
+
+    patient_id: Mapped[str] = mapped_column(
+        ForeignKey("patient_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    rule_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)  # change | data | context
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    numbers: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    observation_ids: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    method_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    config_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[ReviewItemStatus] = mapped_column(
+        str_enum(ReviewItemStatus, "review_item_status"),
+        default=ReviewItemStatus.AWAITING_REVIEW,
+        nullable=False,
+    )
+    decided_by_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    decision_reason: Mapped[str | None] = mapped_column(String(1000))

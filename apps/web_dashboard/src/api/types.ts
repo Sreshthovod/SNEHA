@@ -32,6 +32,9 @@ export type ConsentSummary = S<'ConsentSummary'>
 export type MemoryKind = S<'MemoryKind'>
 export type MemoryStatus = S<'MemoryStatus'>
 export type Memory = S<'MemoryOut'>
+export type MemoryLink = S<'MemoryRelationshipOut'>
+export type MemoryLinkCreate = S<'MemoryRelationshipCreate'>
+export type MemoryLinkType = S<'MemoryRelationType'>
 export type MemoryCreate = S<'MemoryCreate'>
 export type MemoryCorrection = S<'MemoryCorrection'>
 export type MemoryReview = S<'MemoryReview'>
@@ -46,6 +49,13 @@ export type ObservationCorrection = S<'ObservationCorrection'>
 export type ObservationReview = S<'ObservationReview'>
 export type ObservationResolve = S<'ObservationResolve'>
 export type ObservationRevision = S<'ObservationRevisionOut'>
+export type FatigueLevel = S<'FatigueLevel'>
+
+export type ReviewItem = S<'ReviewItemOut'>
+export type ReviewItemStatus = S<'ReviewItemStatus'>
+export type ReviewDecision = S<'ReviewDecision'>
+export type SessionEvent = S<'EventOut'>
+export type ActivityEventType = S<'ActivityEventType'>
 
 export type AnalyticsSummary = S<'AnalyticsSummary'>
 export type AnalyticsTotals = S<'Totals'>

@@ -57,6 +57,10 @@ class Permission(StrEnum):
     VIEW_PROGRESS = "view_progress"
     MANAGE_PREFERENCES = "manage_preferences"
     REVIEW_OBSERVATION = "review_observation"  # review/resolve caregiver observations
+    # Review items (migration 0011). Clinicians see only confirmed items.
+    VIEW_REVIEW_ITEMS = "view_review_items"
+    SCAN_REVIEW_ITEMS = "scan_review_items"  # turn current review prompts into items
+    DECIDE_REVIEW_ITEM = "decide_review_item"  # confirm or dismiss, with a reason
 
 
 P = Permission
@@ -87,10 +91,13 @@ _CAREGIVER_PERMISSIONS = frozenset(
         P.VIEW_ROUTINES,
         P.VIEW_CONSENT,
         P.VIEW_PROGRESS,
+        P.VIEW_REVIEW_ITEMS,
+        P.SCAN_REVIEW_ITEMS,
     }
 )
 _MANAGER_EXTRA = frozenset(
     {
+        P.DECIDE_REVIEW_ITEM,
         P.MANAGE_PATIENT,
         P.MANAGE_MEMORIES,
         P.MANAGE_ROUTINES,
@@ -108,6 +115,7 @@ _CLINICIAN_PERMISSIONS = frozenset(
         P.REQUEST_REPORT,
         P.VIEW_CONSENT,
         P.VIEW_PROGRESS,
+        P.VIEW_REVIEW_ITEMS,
     }
 )
 
@@ -121,6 +129,10 @@ class PatientAccess:
 
     def can(self, permission: Permission) -> bool:
         return permission in self.permissions
+
+    @property
+    def is_clinician(self) -> bool:
+        return self.grant is not None
 
 
 def current_consent(

@@ -5,7 +5,6 @@ import { createGrant, erasePatient, listGrants, revokeGrant } from '../../api/pa
 import type { ConsentGiver, ConsentStatus, ConsentType } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { DisabledWithReason } from '../../components/ui/DisabledReason'
 import { Dialog } from '../../components/ui/Dialog'
 import { SelectField, TextField } from '../../components/ui/Field'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -163,8 +162,8 @@ function DataManagementCard() {
   })
   return (
     <Card title="Data management">
-      <DisabledWithReason label="Download a copy of all data" reason="Data export is not available yet. It is planned for a later version." />
-      <Notice tone="warning" title="Erase everything">
+      <p className="field__hint">Download a copy of all data: not available yet. It is planned for a later version.</p>
+      <Notice tone="danger" title="Erase everything">
         <p>Permanently deletes {patient.display_name}’s profile, Memory Bank and photos, activity history, observations, reports and consent records, and signs out their phone. This cannot be undone.</p>
         <Button variant="danger" onClick={() => setOpen(true)}>Erase all data…</Button>
       </Notice>
@@ -174,6 +173,7 @@ function DataManagementCard() {
         onClose={() => { setOpen(false); setTyped('') }}
         footer={
           <>
+            <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
             <Button
               variant="danger"
               disabled={typed !== patient.display_name}
@@ -184,7 +184,6 @@ function DataManagementCard() {
             >
               Erase permanently
             </Button>
-            <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
           </>
         }
       >

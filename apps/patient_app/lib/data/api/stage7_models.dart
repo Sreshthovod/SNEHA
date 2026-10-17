@@ -71,6 +71,8 @@ class ServerRecommendation {
     required this.reasonCodes,
     required this.breakMinutes,
     required this.hintsEnabled,
+    this.memoryItemIds = const [],
+    this.readAloudFirst = false,
   });
 
   final String id;
@@ -85,6 +87,13 @@ class ServerRecommendation {
   final int? breakMinutes;
   final bool hintsEnabled;
 
+  /// `content_refs.memory_item_ids`: approved memories chosen for this
+  /// activity, most relevant first.
+  final List<String> memoryItemIds;
+
+  /// Read each question aloud when it appears (engine 1.2.0).
+  final bool readAloudFirst;
+
   factory ServerRecommendation.fromJson(Map<String, dynamic> j) =>
       ServerRecommendation(
         id: j['id'] as String,
@@ -98,6 +107,15 @@ class ServerRecommendation {
         ],
         breakMinutes: j['break_minutes'] as int?,
         hintsEnabled: j['hints_enabled'] as bool? ?? false,
+        readAloudFirst: j['read_aloud_first'] as bool? ?? false,
+        memoryItemIds: [
+          for (final id
+              in ((j['content_refs']
+                          as Map<String, dynamic>?)?['memory_item_ids']
+                      as List<dynamic>? ??
+                  const []))
+            id as String,
+        ],
       );
 }
 

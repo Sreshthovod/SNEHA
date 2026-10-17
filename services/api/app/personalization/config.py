@@ -8,7 +8,7 @@ import os
 import tomllib
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -58,6 +58,44 @@ class FatigueRules(_Strict):
     observation_window_hours: float = Field(gt=0)
     low_effort_slugs: list[str] = Field(min_length=1)
     break_minutes: int = Field(ge=1)
+    caregiver_severe_action: Literal["end_session", "offer_break"]
+
+
+class InSessionRules(_Strict):
+    """Thresholds for the phone's in-activity comfort policy
+    (apps/patient_app/lib/adaptation/session_policy.dart). Validated here so the shared
+    TOML can never hold values the phone would misread."""
+
+    auto_hint_after_errors: int = Field(ge=1)
+    auto_hint_after_errors_assisted: int = Field(ge=1)
+    struggled_round_errors: int = Field(ge=1)
+    shorten_after_struggled_rounds: int = Field(ge=1)
+    break_after_struggled_rounds: int = Field(ge=1)
+    mild_fatigue_max_remaining_rounds: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _assisted_not_stricter(self) -> "InSessionRules":
+        if self.auto_hint_after_errors_assisted > self.auto_hint_after_errors:
+            raise ValueError("assisted hint threshold must not exceed the normal one")
+        return self
+
+
+class SupportRules(_Strict):
+    """1.2.0: support that follows what the person needed last time (adaptive-engine-plan.md)."""
+
+    hint_window: int = Field(ge=1)
+    hint_heavy_min_hints: int = Field(ge=1)
+    hint_heavy_results: int = Field(ge=1)
+    struggle_at_easiest_results: int = Field(ge=1)
+    struggle_at_easiest_penalty: int = Field(ge=0)
+    instruction_window: int = Field(ge=1)
+    read_aloud_after_repeats: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def _pattern_fits_window(self) -> "SupportRules":
+        if self.hint_heavy_results > self.hint_window:
+            raise ValueError("hint_heavy_results cannot exceed hint_window")
+        return self
 
 
 class MemoryRules(_Strict):
@@ -74,6 +112,8 @@ class PersonalizationConfig(_Strict):
     difficulty: DifficultyRules
     selection: SelectionRules
     fatigue: FatigueRules
+    in_session: InSessionRules
+    support: SupportRules
     memory: MemoryRules
     activity_interest_tags: dict[str, list[str]] = Field(default_factory=dict)
     content_languages: dict[str, list[str]] = Field(default_factory=dict)

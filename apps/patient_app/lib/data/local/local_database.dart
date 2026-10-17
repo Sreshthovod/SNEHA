@@ -11,7 +11,7 @@ class LocalDatabase {
   static const String fileName = 'sneha_local.db';
 
   /// Bump when adding a migration below. Migrations are append-only.
-  static const int schemaVersion = 4;
+  static const int schemaVersion = 6;
 
   static const String _installIdKey = 'install_id';
 
@@ -237,6 +237,44 @@ class LocalDatabase {
         fetched_at TEXT NOT NULL
       )
       ''',
+    ],
+    5: [
+      // Alignment work: what happened inside each activity run (answers with
+      // latency, hints, pauses, tiredness, stop requests, and every
+      // in-session adaptation decision). Written as it happens and pushed as
+      // `activity_event` mutations.
+      '''
+      CREATE TABLE activity_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        patient_id TEXT NOT NULL REFERENCES profiles(patient_id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        activity_id TEXT NOT NULL,
+        seq INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        occurred_at TEXT NOT NULL,
+        round_index INTEGER,
+        data_json TEXT NOT NULL
+      )
+      ''',
+      'CREATE INDEX ix_activity_events_session ON activity_events (session_id, seq)',
+      // Tiredness reports with a level: made on this phone (by the person or
+      // a caregiver) or pulled from caregiver observations on the dashboard.
+      // Never any note text.
+      '''
+      CREATE TABLE fatigue_reports (
+        id TEXT PRIMARY KEY NOT NULL,
+        patient_id TEXT NOT NULL REFERENCES profiles(patient_id) ON DELETE CASCADE,
+        level TEXT NOT NULL,
+        source TEXT NOT NULL,
+        reported_at TEXT NOT NULL
+      )
+      ''',
+      'CREATE INDEX ix_fatigue_reports_patient ON fatigue_reports (patient_id, reported_at)',
+    ],
+    6: [
+      // Memory-based activities: how a person is related to the patient, as
+      // the caregiver entered it (server migration 0012).
+      'ALTER TABLE memories ADD COLUMN relationship TEXT',
     ],
   };
 

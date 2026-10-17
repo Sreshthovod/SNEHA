@@ -48,7 +48,12 @@ def get_analytics(
     """Metrics for an inclusive date range in the patient's timezone (default: last 9 days),
     with own-baseline comparison where enough data exists and conservative review flags."""
     start, end = _range(access.patient, from_date, to_date)
-    return summarise(db, access.patient, start, end)
+    summary = summarise(db, access.patient, start, end)
+    if access.is_clinician:
+        # Unconfirmed automated prompts never reach a clinician.
+        summary.review_flags = []
+        summary.review_flags_withheld = True
+    return summary
 
 
 @router.get("/review-flags", response_model=ReviewFlagsResponse, responses=_ERRORS)
@@ -67,7 +72,8 @@ def get_review_flags(
         to_date=end,
         method_version=summary.method_version,
         config_version=summary.config_version,
-        review_flags=summary.review_flags,
+        review_flags=[] if access.is_clinician else summary.review_flags,
+        review_flags_withheld=access.is_clinician,
         rules_not_evaluated=summary.rules_not_evaluated,
         disclaimer=summary.disclaimer,
     )

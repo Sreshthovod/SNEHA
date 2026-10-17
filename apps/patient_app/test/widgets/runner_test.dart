@@ -51,12 +51,41 @@ void main() {
     expect(find.text('Well done!'), findsOneWidget);
     expect(find.textContaining('%'), findsNothing, reason: 'no grades');
 
-    final rows = await real(tester, h.outbox);
+    final all = await real(tester, h.outbox);
+    final rows = all
+        .where((r) => r['entity_type'] != 'activity_event')
+        .toList();
     expect(rows.map((r) => r['entity_type']), [
       'activity_session',
       'activity_result',
       'activity_session',
     ]);
+    // Every answer and round is in the outbox as an ordered event, queued
+    // after the session it belongs to and before the result.
+    final events = [
+      for (final r in all.where((r) => r['entity_type'] == 'activity_event'))
+        jsonDecode(r['payload_json'] as String) as Map<String, dynamic>,
+    ];
+    expect(events.first['event_type'], 'activity_started');
+    expect(events.last['event_type'], 'activity_ended');
+    expect(events.last['data'], {
+      'outcome': 'completed',
+      'rounds_remaining': 0,
+    });
+    expect(
+      events.where((e) => e['event_type'] == 'round_solved'),
+      hasLength(3),
+    );
+    expect(
+      [for (final e in events) e['seq']],
+      [for (var i = 0; i < events.length; i++) i],
+    );
+    final attempts = events.where((e) => e['event_type'] == 'attempt');
+    expect(attempts.every((e) => e['data']['latency_ms'] is int), isTrue);
+    expect(
+      all.indexWhere((r) => r['entity_type'] == 'activity_event'),
+      greaterThan(0),
+    );
     final result = jsonDecode(rows[1]['payload_json'] as String);
     expect(result['activity_id'], objectId);
     expect(result['abandoned'], false);
@@ -85,7 +114,7 @@ void main() {
       ),
     );
     expect(hint.onPressed, isNull);
-    await tapVisible(tester, find.text('Continue').last);
+    await tapVisible(tester, find.text('Carry on').last);
     expect(find.text('Paused'), findsNothing);
   });
 

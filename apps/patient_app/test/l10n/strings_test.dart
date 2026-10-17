@@ -17,6 +17,9 @@ void main() {
     }
     // Keys built dynamically.
     used.addAll(['story_prompt_1', 'story_prompt_2', 'story_prompt_3']);
+    for (final k in ['person', 'place', 'event', 'object']) {
+      used.add('memory_kind_$k');
+    }
     for (final k in [
       'data_processing',
       'clinician_sharing',

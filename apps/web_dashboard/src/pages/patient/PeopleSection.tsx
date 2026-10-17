@@ -15,6 +15,7 @@ export function PeopleSection() {
   const caregivers = useAsync((signal) => listCaregivers(patient.id, signal), [patient.id])
   const [code, setCode] = useState<PairingCode | null>(null)
   const [confirmRevoke, setConfirmRevoke] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [form, setForm] = useState({ email: '', relationship_label: '', can_manage: false })
   const [formError, setFormError] = useState<string | null>(null)
@@ -56,7 +57,10 @@ export function PeopleSection() {
                 Create connection code
               </Button>
               {patient.has_paired_device && (
-                <Button variant="danger" onClick={() => setConfirmRevoke(true)}>Sign out all phones</Button>
+                <>
+                  <span className="observation-actions__spacer" aria-hidden="true" />
+                  <Button variant="danger-outline" onClick={() => setConfirmRevoke(true)}>Sign out all phones</Button>
+                </>
               )}
             </div>
             <ActionError error={pair.error ?? revoke.error} />
@@ -85,7 +89,7 @@ export function PeopleSection() {
                 {c.caregiver_id === me.id && ' · you'}
               </span>
               {isManager && c.caregiver_id !== me.id && (
-                <Button variant="ghost" onClick={async () => { await remove.run(c.id); caregivers.reload() }} disabled={remove.pending}>
+                <Button variant="danger-outline" onClick={() => setConfirmRemove({ id: c.id, name: c.caregiver_name })} disabled={remove.pending} aria-label={`Remove ${c.caregiver_name}`}>
                   Remove
                 </Button>
               )}
@@ -111,18 +115,36 @@ export function PeopleSection() {
         onClose={() => setConfirmRevoke(false)}
         footer={
           <>
+            <Button variant="secondary" onClick={() => setConfirmRevoke(false)}>Cancel</Button>
             <Button variant="danger" pending={revoke.pending} onClick={async () => {
               if (!(await revoke.run())) return
               setConfirmRevoke(false)
               setNotice('All phones have been signed out. Create a new code to connect again.')
               reloadPatient()
             }}>Sign out phones</Button>
-            <Button variant="secondary" onClick={() => setConfirmRevoke(false)}>Cancel</Button>
           </>
         }
       >
         <p>Use this if a phone is lost. Activities already on the phone that have not synced cannot be recovered.</p>
         <ActionError error={revoke.error} />
+      </Dialog>
+      <Dialog
+        open={confirmRemove !== null}
+        title={`Remove ${confirmRemove?.name ?? 'this caregiver'}?`}
+        onClose={() => setConfirmRemove(null)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmRemove(null)}>Cancel</Button>
+            <Button variant="danger" pending={remove.pending} onClick={async () => {
+              if (!confirmRemove) return
+              await remove.run(confirmRemove.id)
+              setConfirmRemove(null)
+              caregivers.reload()
+            }}>Remove access</Button>
+          </>
+        }
+      >
+        <p>They will no longer see {patient.display_name}'s record. You can add them again later.</p>
       </Dialog>
     </>
   )

@@ -50,7 +50,10 @@ export function ReportsSection() {
         <form onSubmit={onSubmit} noValidate className="inline-fields">
           <TextField label="First day" type="date" value={start} max={today} onChange={(e) => setStart(e.target.value)} required />
           <SelectField label="Length" value={length} onChange={(e) => setLength(e.target.value)} options={[{ value: '8', label: '8 days' }, { value: '9', label: '9 days' }]} />
-          <p className="field__hint">Last day: {end ? formatDate(end) : '—'}</p>
+          <div className="field">
+            <span className="field__label">Last day</span>
+            <p className="readout" aria-live="polite">{end ? formatDate(end) : '—'}</p>
+          </div>
           <Button type="submit" pending={action.pending} disabled={!start}>Request report</Button>
         </form>
         <ActionError error={action.error} />

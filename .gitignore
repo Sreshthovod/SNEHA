@@ -53,3 +53,7 @@ apps/patient_app/.dart_tool/
 
 # --- Logs ---
 *.log
+
+# --- UI QA output (tools/ui-qa); curated screenshots live in docs/ui-screenshots ---
+tools/ui-qa/screenshots/
+tools/ui-qa/**/.chrome/

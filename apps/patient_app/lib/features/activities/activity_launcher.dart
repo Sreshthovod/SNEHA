@@ -16,13 +16,21 @@ Future<void> launchActivity(
   bool replace = false,
   int? difficulty,
   String? recommendationId,
+  bool hintsAdvised = false,
+  List<String> preferredMemoryIds = const [],
+  bool readAloudFirst = false,
+  List<String> engineReasonCodes = const [],
+  String? decidedOn,
 }) async {
   final services = AppScope.of(context);
   final navigator = Navigator.of(context);
   if (catalog.slug == storyTimeSlug) {
     // Story time is unscored and has its own screen (not the runner).
     final route = MaterialPageRoute<void>(
-      builder: (_) => StoryTimeScreen(profile: profile),
+      builder: (_) => StoryTimeScreen(
+        profile: profile,
+        preferredMemoryIds: preferredMemoryIds,
+      ),
     );
     replace
         ? await navigator.pushReplacement(route)
@@ -34,6 +42,7 @@ Future<void> launchActivity(
   final content = ActivityContent(
     memories: await services.content.memories(profile.patientId),
     routines: await services.content.routines(profile.patientId),
+    preferredMemoryIds: preferredMemoryIds,
   );
   // A suggestion already carries the engine's difficulty; otherwise ask the
   // local engine. Either way it stays within the catalog range.
@@ -53,6 +62,10 @@ Future<void> launchActivity(
       difficulty: level,
       spec: spec,
       recommendationId: recommendationId,
+      hintsAdvised: hintsAdvised,
+      readAloudFirst: readAloudFirst,
+      engineReasonCodes: engineReasonCodes,
+      decidedOn: decidedOn,
     ),
   );
   replace

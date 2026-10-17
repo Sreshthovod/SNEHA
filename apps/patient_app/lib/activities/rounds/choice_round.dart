@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/strings.dart';
+import '../../ui/theme.dart';
 import '../../ui/widgets.dart';
 import '../activity.dart';
 
@@ -32,6 +33,7 @@ class ChoiceRoundSpec extends RoundSpec {
     this.promptImagePath,
     this.promptImageLabel,
     this.extraHint,
+    this.memoryId,
   }) : assert(options.any((o) => o.id == correctId)),
        assert(options.length >= 2);
 
@@ -47,6 +49,12 @@ class ChoiceRoundSpec extends RoundSpec {
 
   /// Optional first hint (e.g. "from around 1975") before removing options.
   final String? extraHint;
+
+  /// The approved memory this round asks about (null for everyday content).
+  final String? memoryId;
+
+  @override
+  List<String> get memoryIds => [?memoryId];
 
   bool isCorrect(String id) => id == correctId;
 
@@ -121,12 +129,13 @@ class _ChoiceRoundViewState extends State<_ChoiceRoundView> {
           MemoryPhoto(
             path: spec.promptImagePath,
             semanticLabel: spec.promptImageLabel ?? '',
+            height: 200,
           )
         else if (spec.promptIcon != null)
           Center(
             child: Icon(
               spec.promptIcon,
-              size: 120,
+              size: 80,
               color: theme.colorScheme.primary,
               semanticLabel: spec.prompt,
             ),
@@ -135,7 +144,13 @@ class _ChoiceRoundViewState extends State<_ChoiceRoundView> {
         for (final option in options)
           _OptionButton(
             option: option,
-            disabled: _solved || _wrong.contains(option.id),
+            state: _solved && spec.isCorrect(option.id)
+                ? _OptionState.right
+                : _wrong.contains(option.id)
+                ? _OptionState.tried
+                : _OptionState.open,
+            enabled: !_solved && !_wrong.contains(option.id),
+            notThisOne: s.t('runner_not_this_one'),
             onTap: () => _choose(option),
           ),
         if (_wrong.isNotEmpty && !_solved)
@@ -143,8 +158,7 @@ class _ChoiceRoundViewState extends State<_ChoiceRoundView> {
         if (_solved) ...[
           NoticeBanner(
             message: s.t('runner_correct'),
-            icon: Icons.check_circle,
-            positive: true,
+            tone: NoticeTone.positive,
           ),
           BigButton(
             label: s.t('common_continue'),
@@ -157,47 +171,156 @@ class _ChoiceRoundViewState extends State<_ChoiceRoundView> {
   }
 }
 
+enum _OptionState { open, tried, right }
+
+/// One answer. Tried answers stay readable ("Not this one", no red, no
+/// cross); the right one gets a check mark. Never colour alone.
 class _OptionButton extends StatelessWidget {
   const _OptionButton({
     required this.option,
-    required this.disabled,
+    required this.state,
+    required this.enabled,
+    required this.notThisOne,
     required this.onTap,
   });
 
   final ChoiceOption option;
-  final bool disabled;
+  final _OptionState state;
+  final bool enabled;
+  final String notThisOne;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final highContrast = SnehaTheme.isHighContrast(theme);
+    final (Color bg, Color fg, BorderSide side) = switch (state) {
+      _OptionState.right => (
+        scheme.primaryContainer,
+        scheme.onPrimaryContainer,
+        BorderSide(color: scheme.primary, width: 3),
+      ),
+      _OptionState.tried => (
+        scheme.surfaceContainer,
+        scheme.onSurfaceVariant,
+        BorderSide(
+          color: highContrast ? scheme.outline : scheme.outlineVariant,
+          width: highContrast ? 3 : 1,
+        ),
+      ),
+      _OptionState.open => (
+        scheme.surfaceContainerLowest,
+        enabled ? scheme.onSurface : scheme.onSurfaceVariant,
+        BorderSide(color: scheme.outline, width: highContrast ? 3 : 2),
+      ),
+    };
+    final leading = switch (state) {
+      _OptionState.right => Icons.check_circle,
+      _ => option.icon,
+    };
+    final note = state == _OptionState.tried
+        ? Text(
+            notThisOne,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(color: fg),
+          )
+        : null;
+
     if (option.imagePath != null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
         child: Semantics(
           button: true,
-          enabled: !disabled,
-          label: option.label,
+          enabled: enabled,
+          label: state == _OptionState.tried
+              ? '${option.label}. $notThisOne'
+              : option.label,
           excludeSemantics: true,
-          child: InkWell(
-            onTap: disabled ? null : onTap,
-            borderRadius: BorderRadius.circular(16),
-            child: Opacity(
-              opacity: disabled ? 0.4 : 1,
-              child: MemoryPhoto(
-                path: option.imagePath,
-                semanticLabel: option.label,
-                height: 160,
+          child: Material(
+            color: bg,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: side,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: enabled ? onTap : null,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Opacity(
+                      opacity: state == _OptionState.tried ? 0.6 : 1,
+                      child: MemoryPhoto(
+                        path: option.imagePath,
+                        semanticLabel: option.label,
+                        height: 150,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (state == _OptionState.right) ...[
+                          Icon(Icons.check_circle, color: fg, size: 26),
+                          const SizedBox(width: 8),
+                        ],
+                        Flexible(
+                          child: Text(
+                            option.label,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: fg,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ?note,
+                  ],
+                ),
               ),
             ),
           ),
         ),
       );
     }
-    return BigButton(
-      label: option.label,
-      icon: option.icon,
-      secondary: true,
-      onPressed: disabled ? null : onTap,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, SnehaTheme.optionMinHeight),
+          textStyle: theme.textTheme.titleMedium,
+          backgroundColor: bg,
+          foregroundColor: fg,
+          iconColor: state == _OptionState.right ? fg : scheme.primary,
+          disabledBackgroundColor: bg,
+          disabledForegroundColor: fg,
+          disabledIconColor: fg,
+          side: side,
+        ),
+        onPressed: enabled ? onTap : null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (leading != null) ...[
+                  Icon(leading, size: 28),
+                  const SizedBox(width: 12),
+                ],
+                Flexible(
+                  child: Text(option.label, textAlign: TextAlign.center),
+                ),
+              ],
+            ),
+            ?note,
+          ],
+        ),
+      ),
     );
   }
 }

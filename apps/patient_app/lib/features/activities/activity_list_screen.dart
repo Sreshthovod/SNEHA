@@ -55,12 +55,20 @@ class _ActivityListScreenState extends State<ActivityListScreen> {
         builder: (context, snap) {
           if (snap.hasError) {
             return MessageView(
-              icon: Icons.error_outline,
+              icon: Icons.cloud_off_outlined,
+              quiet: true,
               title: s.t('error_generic'),
-              body: '',
+              body: s.t('runner_error_body'),
               action: BigButton(
                 label: s.t('common_retry'),
+                icon: Icons.refresh,
                 onPressed: () => setState(() => _data = _load()),
+              ),
+              secondaryAction: BigButton(
+                label: s.t('result_home'),
+                icon: Icons.home_outlined,
+                secondary: true,
+                onPressed: () => Navigator.of(context).pop(),
               ),
             );
           }
@@ -71,6 +79,12 @@ class _ActivityListScreenState extends State<ActivityListScreen> {
               icon: Icons.cloud_download_outlined,
               title: s.t('activities_empty_title'),
               body: s.t('activities_empty_body'),
+              action: BigButton(
+                label: s.t('result_home'),
+                icon: Icons.home_outlined,
+                secondary: true,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
             );
           }
           // Playable first, "coming soon" last.
@@ -133,29 +147,87 @@ class _ActivityCard extends StatelessWidget {
       }
     }
 
+    final scheme = theme.colorScheme;
+    final available = onStart != null;
+    final icon =
+        activity?.icon ??
+        (isStory ? Icons.auto_stories : Icons.hourglass_empty);
     return SnehaCard(
-      title: catalog.title,
-      icon:
-          activity?.icon ??
-          (isStory ? Icons.auto_stories : Icons.hourglass_empty),
+      color: available ? null : scheme.surfaceContainerLow,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(catalog.description, style: theme.textTheme.bodyLarge),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: available
+                      ? scheme.primaryContainer
+                      : scheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  size: 30,
+                  color: available
+                      ? scheme.onPrimaryContainer
+                      : scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        catalog.title,
+                        style: theme.textTheme.titleLarge,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      catalog.description,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           if (disabledReason != null)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                disabledReason,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+              padding: const EdgeInsets.only(top: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.schedule,
+                    size: 24,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      disabledReason,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           const SizedBox(height: 8),
           BigButton(
             label: s.t('activities_start', {'name': catalog.title}),
             icon: Icons.play_arrow,
+            secondary: true,
             onPressed: onStart,
           ),
         ],

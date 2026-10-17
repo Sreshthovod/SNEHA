@@ -6,15 +6,13 @@ import '../../core/connectivity/server_status.dart';
 import '../../data/api/models.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../l10n/strings.dart';
+import '../../ui/theme.dart';
 import '../../ui/widgets.dart';
 import '../activities/activity_list_screen.dart';
 import '../conversation/conversation_screen.dart';
 import '../memories/story_time_screen.dart';
-import '../privacy/privacy_screen.dart';
-import '../progress/progress_screen.dart';
+import '../caregiver/caregiver_screen.dart';
 import 'suggestion_card.dart';
-import '../settings/settings_screen.dart';
-import '../sync/sync_status_screen.dart';
 
 /// Screen 4: patient home.
 class HomeScreen extends StatefulWidget {
@@ -79,11 +77,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = context.s;
     final services = AppScope.of(context);
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final profile = widget.profile;
     return Scaffold(
-      appBar: AppBar(title: Text(s.t('app_name'))),
+      // No app bar: the greeting is the title, so the main choices fit on
+      // the first screen of a small phone.
       body: PageBody(
         children: [
+          Row(
+            children: [
+              Icon(Icons.spa_outlined, size: 24, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                s.t('app_name'),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: scheme.secondary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           Semantics(
             header: true,
             child: Text(
@@ -91,18 +105,40 @@ class _HomeScreenState extends State<HomeScreen> {
               style: theme.textTheme.headlineLarge,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          if (profile.needsRepair)
+            NoticeBanner(message: s.t('home_needs_repair')),
+          SuggestionCard(key: _suggestionKey, profile: profile),
+          const SizedBox(height: 4),
+          // Only a few large choices for the person. Caregiver tasks are one
+          // tap away, behind "For caregivers".
+          BigButton(
+            label: s.t('home_play'),
+            icon: Icons.extension_outlined,
+            secondary: true,
+            onPressed: () => _open(ActivityListScreen(profile: profile)),
+          ),
+          BigButton(
+            label: s.t('home_memories'),
+            icon: Icons.photo_album_outlined,
+            secondary: true,
+            onPressed: () => _open(StoryTimeScreen(profile: profile)),
+          ),
+          BigButton(
+            label: s.t('home_talk'),
+            icon: Icons.chat_bubble_outline,
+            secondary: true,
+            onPressed: () => _open(ConversationScreen(profile: profile)),
+          ),
+          const SizedBox(height: 12),
           ListenableBuilder(
             listenable: services.serverStatus,
             builder: (context, _) =>
                 ConnectionCard(connection: services.serverStatus.connection),
           ),
-          if (profile.needsRepair)
-            NoticeBanner(message: s.t('home_needs_repair')),
-          SuggestionCard(key: _suggestionKey, profile: profile),
           SnehaCard(
             title: s.t('home_today'),
-            icon: Icons.today,
+            icon: Icons.today_outlined,
             child: _today == null
                 ? const SizedBox(height: 8)
                 : _today!.isEmpty
@@ -116,60 +152,42 @@ class _HomeScreenState extends State<HomeScreen> {
                       for (final r in _today!)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            '${r.localTime}  ${r.title}',
-                            style: theme.textTheme.bodyLarge,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 72,
+                                child: Text(
+                                  r.localTime,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  r.title,
+                                  style: theme.textTheme.bodyLarge,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                     ],
                   ),
           ),
           const SizedBox(height: 8),
-          BigButton(
-            label: s.t('home_play'),
-            icon: Icons.extension,
-            onPressed: () => _open(ActivityListScreen(profile: profile)),
-          ),
-          BigButton(
-            label: s.t('home_memories'),
-            icon: Icons.photo_album,
-            onPressed: () => _open(StoryTimeScreen(profile: profile)),
-          ),
-          BigButton(
-            label: s.t('home_progress'),
-            icon: Icons.insights_outlined,
-            secondary: true,
-            onPressed: () => _open(ProgressScreen(profile: profile)),
-          ),
-          BigButton(
-            label: s.t('home_talk'),
-            icon: Icons.chat_bubble_outline,
-            onPressed: () => _open(ConversationScreen(profile: profile)),
-          ),
-          const SizedBox(height: 12),
-          BigButton(
-            label: s.t('home_settings'),
-            icon: Icons.settings,
-            secondary: true,
-            onPressed: () => _open(SettingsScreen(profile: profile)),
-          ),
-          BigButton(
-            label: s.t('home_sync'),
-            icon: Icons.sync,
-            secondary: true,
-            onPressed: () => _open(SyncStatusScreen(profile: profile)),
-          ),
-          BigButton(
-            label: s.t('home_privacy'),
-            icon: Icons.lock_outline,
-            secondary: true,
-            onPressed: () => _open(PrivacyScreen(profile: profile)),
-          ),
-          BigButton(
-            label: s.t('home_switch'),
-            icon: Icons.people_outline,
-            secondary: true,
-            onPressed: () => services.controller.selectProfile(null),
+          Center(
+            child: TextButton.icon(
+              key: const ValueKey('home_caregiver'),
+              style: TextButton.styleFrom(foregroundColor: scheme.tertiary),
+              onPressed: () => _open(CaregiverScreen(profile: profile)),
+              icon: const Icon(Icons.volunteer_activism_outlined),
+              label: Text(s.t('home_caregiver')),
+            ),
           ),
         ],
       ),
@@ -177,7 +195,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Always tells the user plainly what works right now. Icon + words, never colour alone.
+/// Always tells the user plainly what works right now. Icon + words, never
+/// colour alone. A light status strip, not an alert.
 class ConnectionCard extends StatelessWidget {
   const ConnectionCard({super.key, required this.connection});
 
@@ -187,6 +206,8 @@ class ConnectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppStrings s = context.s;
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final highContrast = SnehaTheme.isHighContrast(theme);
     final (IconData icon, String title, String body) = switch (connection) {
       ServerConnection.checking => (
         Icons.sync,
@@ -194,7 +215,7 @@ class ConnectionCard extends StatelessWidget {
         s.t('conn_checking_body'),
       ),
       ServerConnection.online => (
-        Icons.cloud_done,
+        Icons.cloud_done_outlined,
         s.t('conn_online'),
         s.t('conn_online_body'),
       ),
@@ -205,31 +226,44 @@ class ConnectionCard extends StatelessWidget {
       ),
     };
 
-    return Card(
-      child: Semantics(
-        container: true,
-        liveRegion: true,
-        label: '$title. $body',
-        excludeSemantics: true,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, size: 40, color: theme.colorScheme.primary),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Text(body, style: theme.textTheme.bodyLarge),
-                  ],
-                ),
-              ),
-            ],
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: '$title. $body',
+      excludeSemantics: true,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: highContrast ? scheme.outline : scheme.outlineVariant,
+            width: highContrast ? 3 : 1,
           ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 28, color: scheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 2),
+                  Text(
+                    body,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

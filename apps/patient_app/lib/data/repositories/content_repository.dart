@@ -68,6 +68,7 @@ class ContentRepository {
             title: r['title'] as String,
             description: r['description'] as String?,
             approxYear: r['approx_year'] as int?,
+            relationship: r['relationship'] as String?,
             tags: (jsonDecode(r['tags_json'] as String) as List).cast<String>(),
             mediaFileId: r['media_file_id'] as String?,
             version: r['version'] as int,
@@ -75,6 +76,24 @@ class ContentRepository {
           ),
         )
         .toList();
+  }
+
+  /// Caregiver-made links between approved memories on this phone (the server
+  /// only sends a link while both ends are approved).
+  Future<List<MemoryLinkFact>> memoryLinks(String patientId) async {
+    final rows = await _local.db.query(
+      'memory_links',
+      where: 'patient_id = ?',
+      whereArgs: [patientId],
+    );
+    return [
+      for (final r in rows)
+        MemoryLinkFact(
+          fromId: r['from_memory_id'] as String,
+          toId: r['to_memory_id'] as String,
+          type: r['relation_type'] as String,
+        ),
+    ];
   }
 
   Future<List<RoutineItem>> routines(String patientId) async {

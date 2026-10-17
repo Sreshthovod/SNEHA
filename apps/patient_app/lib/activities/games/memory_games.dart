@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../data/api/models.dart';
 import '../../l10n/strings.dart';
 import '../activity.dart';
+import '../memory_content.dart';
 import '../rounds/choice_round.dart';
 
 List<T> _pick<T>(List<T> items, int n, Random rng) =>
@@ -23,17 +24,17 @@ class PhotoRecallActivity extends CognitiveActivity {
   @override
   bool get usesMemoryBank => true;
 
-  List<MemoryItem> _usable(ActivityContent c) {
-    final byTitle = <String, MemoryItem>{};
-    for (final m in c.withPhotos) {
-      byTitle.putIfAbsent(m.title.toLowerCase(), () => m);
-    }
-    return byTitle.values.toList();
-  }
+  List<MemoryItem> _usable(ActivityContent c) => distinctPhotoMemories(c);
 
   @override
   String? unavailableReason(ActivityContent content) =>
       _usable(content).length < 2 ? 'activities_needs_memories' : null;
+
+  @override
+  ContentChoice contentChoice(ActivityContent content) => ContentChoice(
+    personal: true,
+    reasons: withPreferredReason(content, [ContentReason.personalPhotos]),
+  );
 
   @override
   List<RoundSpec> createRounds({
@@ -53,12 +54,13 @@ class PhotoRecallActivity extends CognitiveActivity {
       memories.length,
     );
     return [
-      for (final target in _pick(memories, rounds, random))
+      for (final target in content.pickPreferred(memories, rounds, random))
         ChoiceRoundSpec(
           prompt: strings.t('game_photo_recall_q'),
           promptImagePath: target.localPhotoPath,
           promptImageLabel: strings.t('game_memory_photo'),
           correctId: target.id,
+          memoryId: target.id,
           extraHint: target.approxYear == null
               ? null
               : strings.t('hint_year', {'year': target.approxYear!}),
@@ -99,6 +101,16 @@ class FamiliarFacesActivity extends CognitiveActivity {
       _people(content).length < 2 ? 'activities_needs_memories' : null;
 
   @override
+  ContentChoice contentChoice(ActivityContent content) => ContentChoice(
+    personal: true,
+    reasons: withPreferredReason(content, [
+      ContentReason.personalPeople,
+      if (_people(content).any((m) => m.relationship != null))
+        ContentReason.relationshipHint,
+    ]),
+  );
+
+  @override
   List<RoundSpec> createRounds({
     required ActivityContent content,
     required int difficulty,
@@ -116,7 +128,7 @@ class FamiliarFacesActivity extends CognitiveActivity {
       people.length,
     );
     return [
-      for (final target in _pick(people, rounds, random))
+      for (final target in content.pickPreferred(people, rounds, random))
         () {
           final options = [
             target,
@@ -130,6 +142,14 @@ class FamiliarFacesActivity extends CognitiveActivity {
             prompt: strings.t('game_faces_q', {'name': target.title}),
             promptIcon: Icons.person,
             correctId: target.id,
+            memoryId: target.id,
+            // Only what the caregiver entered: "Synthetic Mina is your granddaughter."
+            extraHint: target.relationship == null
+                ? null
+                : strings.t('hint_relationship', {
+                    'name': target.title,
+                    'relationship': target.relationship!,
+                  }),
             options: [
               for (var i = 0; i < options.length; i++)
                 ChoiceOption(

@@ -4,11 +4,11 @@ import { listMemories } from '../api/memories'
 import { listObservations } from '../api/observations'
 import { listCaregivers, listPatients } from '../api/patients'
 import type { Patient } from '../api/types'
-import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { EmptyState, ErrorState, Loading } from '../components/ui/States'
 import { useAsync } from '../hooks/useAsync'
 import { addDays, formatDateTime, todayInZone } from '../lib/dates'
+import { initials } from '../lib/people'
 import { useAuth } from '../state/auth'
 
 function PatientSummaryCard({ patient }: { patient: Patient }) {
@@ -36,18 +36,50 @@ function PatientSummaryCard({ patient }: { patient: Patient }) {
   )
   const base = `/app/patients/${patient.id}`
 
+  const flags = summary.data?.analytics.review_flags ?? []
+
   return (
-    <Card title={patient.display_name} headingLevel={2}>
+    <section className="card person-summary" aria-labelledby={`person-${patient.id}`}>
+      <div className="person-summary__header">
+        <div className="person-summary__identity">
+          <span className="app-user__avatar" aria-hidden="true">
+            {initials(patient.display_name)}
+          </span>
+          <div>
+            <h2 id={`person-${patient.id}`}>
+              <Link to={base}>{patient.display_name}</Link>
+            </h2>
+            <p className="person-card__meta">
+              {patient.has_paired_device ? 'Phone connected' : 'No phone connected yet'} · Last 7 days
+            </p>
+          </div>
+        </div>
+        <Link to={base} className="button button--secondary">
+          Open record
+        </Link>
+      </div>
       {summary.status === 'error' && <ErrorState error={summary.error} onRetry={summary.reload} />}
       {!summary.data && summary.status === 'loading' && <Loading />}
       {summary.data && (
-        <div className="summary-grid">
+        <div className="person-summary__grid">
+          <div className="metric">
+            <p className="metric__label">Activities in the last 7 days</p>
+            <p className="metric__value">{summary.data.analytics.totals.results}</p>
+            <p className="field__hint">
+              on {summary.data.analytics.completeness.days_with_activity} of {summary.data.analytics.completeness.days_elapsed} days
+            </p>
+            <Link to={`${base}/history`}>Activity history</Link>
+          </div>
           <div className="metric">
             <p className="metric__label">Memories waiting for approval</p>
             {summary.data.pending ? (
               <>
                 <p className="metric__value">{summary.data.pending.length}</p>
-                {summary.data.pending.length > 0 && <Link to={`${base}/memories?status=pending_approval`}>Review memories</Link>}
+                {summary.data.pending.length > 0 ? (
+                  <Link to={`${base}/memories?status=pending_approval`}>Review memories</Link>
+                ) : (
+                  <p className="field__hint">All caught up.</p>
+                )}
               </>
             ) : (
               <p className="field__hint">A managing family member approves memories.</p>
@@ -58,35 +90,32 @@ function PatientSummaryCard({ patient }: { patient: Patient }) {
             {summary.data.open ? (
               <>
                 <p className="metric__value">{summary.data.open.length}</p>
-                {summary.data.open.length > 0 && <Link to={`${base}/observations`}>Review notes</Link>}
+                {summary.data.open.length > 0 ? (
+                  <Link to={`${base}/observations?status=open`}>Review notes</Link>
+                ) : (
+                  <p className="field__hint">All caught up.</p>
+                )}
               </>
             ) : (
               <p className="field__hint">A managing family member reviews notes.</p>
             )}
           </div>
-          <div className="metric">
-            <p className="metric__label">Activities in the last 7 days</p>
-            <p className="metric__value">{summary.data.analytics.totals.results}</p>
-            <p className="field__hint">
-              on {summary.data.analytics.completeness.days_with_activity} of {summary.data.analytics.completeness.days_elapsed} days
-            </p>
-            <Link to={`${base}/history`}>Activity history</Link>
-          </div>
-          <div className="metric">
+          <div className="metric metric--wide">
             <p className="metric__label">May be worth reviewing</p>
-            <p className="metric__value">{summary.data.analytics.review_flags.length}</p>
-            {summary.data.analytics.review_flags.length > 0 ? (
-              <ul className="plain-list">
-                {summary.data.analytics.review_flags.slice(0, 3).map((f) => (
+            <p className="metric__value">{flags.length}</p>
+            {flags.length > 0 ? (
+              <ul className="attention-list">
+                {flags.slice(0, 3).map((f) => (
                   <li key={f.rule_id}>{f.title}</li>
                 ))}
               </ul>
             ) : (
               <p className="field__hint">Nothing stands out this week.</p>
             )}
-            <Link to={`${base}/analytics`}>Activity trends</Link>
+            <p className="field__hint">Automated prompts for this week. Nothing is shared with a clinician until you confirm it.</p>
+            <Link to={`${base}/analytics`}>Review in activity trends</Link>
           </div>
-          <div className="metric">
+          <div className="metric metric--wide">
             <p className="metric__label">Recent tiredness notes</p>
             {summary.data.fatigue.length === 0 ? (
               <p className="field__hint">None recorded.</p>
@@ -94,7 +123,7 @@ function PatientSummaryCard({ patient }: { patient: Patient }) {
               <ul className="plain-list">
                 {summary.data.fatigue.map((o) => (
                   <li key={o.id}>
-                    <span className="field__hint">{formatDateTime(o.observed_at, patient.timezone)}</span>
+                    <span className="timeline__meta">{formatDateTime(o.observed_at, patient.timezone)}</span>
                     <br />
                     {o.note}
                   </li>
@@ -105,7 +134,7 @@ function PatientSummaryCard({ patient }: { patient: Patient }) {
           </div>
         </div>
       )}
-    </Card>
+    </section>
   )
 }
 
@@ -113,7 +142,10 @@ export function CaregiverDashboardPage() {
   const patients = useAsync((signal) => listPatients(signal), [])
   return (
     <>
-      <PageHeader title="Dashboard" lede="A calm overview of the people you care for." />
+      <PageHeader
+        title="Dashboard"
+        lede="A calm overview of the people you care for."
+      />
       {patients.status === 'error' && <ErrorState error={patients.error} onRetry={patients.reload} />}
       {patients.status === 'loading' && !patients.data && <Loading />}
       {patients.data?.length === 0 && (

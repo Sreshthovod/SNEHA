@@ -19,7 +19,7 @@ from enum import StrEnum
 
 from app.personalization.config import PersonalizationConfig
 
-ALGORITHM_VERSION = "1.0.0"
+ALGORITHM_VERSION = "1.2.0"
 
 
 class Reason(StrEnum):
@@ -27,6 +27,7 @@ class Reason(StrEnum):
     FATIGUE_REPORTED_BREAK = "FATIGUE_REPORTED_BREAK"
     RECENT_FATIGUE_FEEDBACK = "RECENT_FATIGUE_FEEDBACK"
     RECENT_FATIGUE_OBSERVATION = "RECENT_FATIGUE_OBSERVATION"
+    CAREGIVER_SEVERE_FATIGUE = "CAREGIVER_REPORTED_SEVERE_FATIGUE"
     LOW_EFFORT_FOR_FATIGUE = "LOW_EFFORT_FOR_FATIGUE"
     COLD_START_DEFAULT = "COLD_START_DEFAULT"
     INTEREST_MATCH = "INTEREST_MATCH"
@@ -49,6 +50,10 @@ class Reason(StrEnum):
     OFFLINE_CONTENT_FILTER = "LIMITED_TO_AVAILABLE_OFFLINE_CONTENT"
     LANGUAGE_CONTENT_FALLBACK = "LANGUAGE_CONTENT_FALLBACK"
     NO_AVAILABLE_ACTIVITY = "NO_AVAILABLE_ACTIVITY"
+    # 1.2.0: support that follows what the person needed last time.
+    HINT_SUPPORT = "HINT_SUPPORT_AFTER_HINT_USE"
+    EASIER_ALTERNATIVE = "EASIER_ALTERNATIVE_AFTER_STRUGGLE"
+    READ_ALOUD_FIRST = "INSTRUCTIONS_READ_ALOUD_FIRST"
 
 
 class Action(StrEnum):
@@ -89,6 +94,8 @@ class ResultFact:
     engagement: str | None = None
     fatigue_reported: bool = False
     mean_response_ms: float | None = None
+    # Times "Read aloud" was pressed during the run (1.2.0). None = not recorded (older app).
+    instructions_repeated: int | None = None
 
 
 @dataclass(frozen=True)
@@ -96,6 +103,8 @@ class ObservationFact:
     id: str
     category: str
     observed_at: datetime
+    # Fatigue observations only: "mild" | "severe" | None (not given).
+    fatigue_level: str | None = None
 
 
 @dataclass(frozen=True)
@@ -149,6 +158,8 @@ class DifficultyDecision:
     reasons: list[Reason]
     supporting: list[Support]
     hints_enabled: bool
+    # Consecutive struggles at the end of the history (1.2.0).
+    trailing_struggles: int = 0
 
 
 @dataclass
@@ -164,6 +175,8 @@ class Recommendation:
     fallback_used: bool = False
     fallback_reason: str | None = None
     break_minutes: int | None = None
+    # 1.2.0: read each question aloud when it appears (if read-aloud is on).
+    read_aloud_first: bool = False
 
     @property
     def reason_codes(self) -> list[str]:
@@ -271,7 +284,35 @@ def decide_difficulty(
     hints = trailing_struggles >= rules.hints_after_struggles
     if hints:
         reasons.append(Reason.HINTS_OFFERED)
-    return DifficultyDecision(level, reasons, supporting, hints)
+    return DifficultyDecision(level, reasons, supporting, hints, trailing_struggles)
+
+
+def hint_heavy(results: Sequence[ResultFact], cfg: PersonalizationConfig) -> list[ResultFact]:
+    """This activity's recent results that needed many hints, if they form a pattern."""
+    rules = cfg.support
+    recent = [r for r in results if not r.abandoned][-rules.hint_window :]
+    heavy = [r for r in recent if r.hints >= rules.hint_heavy_min_hints]
+    return heavy if len(heavy) >= rules.hint_heavy_results else []
+
+
+def struggling_at_easiest(
+    activity: ActivityFact, results: Sequence[ResultFact], cfg: PersonalizationConfig
+) -> list[ResultFact]:
+    """The latest struggles if the person is struggling at this activity's easiest level."""
+    decision = decide_difficulty(activity, results, cfg)
+    needed = cfg.support.struggle_at_easiest_results
+    if decision.level == activity.min_difficulty and decision.trailing_struggles >= needed:
+        return [r for r in results if r.score is not None and not r.abandoned][-needed:]
+    return []
+
+
+def read_aloud_first(results: Sequence[ResultFact], cfg: PersonalizationConfig) -> list[ResultFact]:
+    """Recent results where "Read aloud" was pressed often enough to read questions first."""
+    rules = cfg.support
+    recent = list(results)[-rules.instruction_window :]
+    pressed = [r for r in recent if (r.instructions_repeated or 0) > 0]
+    total = sum(r.instructions_repeated or 0 for r in recent)
+    return pressed if total >= rules.read_aloud_after_repeats else []
 
 
 # ---------------------------------------------------------------- selection
@@ -318,12 +359,18 @@ def _fatigue_signals(
         if o.category == "fatigue" and _within(
             inp.now, o.observed_at, rules.observation_window_hours
         ):
-            reasons.append(Reason.RECENT_FATIGUE_OBSERVATION)
+            if o.fatigue_level == "severe":
+                # A caregiver said "very tired": a rest, not another activity.
+                explicit_now = True
+                reasons.append(Reason.CAREGIVER_SEVERE_FATIGUE)
+            else:
+                reasons.append(Reason.RECENT_FATIGUE_OBSERVATION)
             supporting.append(
                 Support(
                     "caregiver_observation",
                     o.id,
-                    f"caregiver noted tiredness at {o.observed_at:%H:%M} UTC",
+                    f"caregiver noted tiredness at {o.observed_at:%H:%M} UTC"
+                    + (f" ({o.fatigue_level})" if o.fatigue_level else ""),
                 )
             )
     return explicit_now, reasons, supporting
@@ -470,7 +517,16 @@ def recommend(inp: EngineInput, cfg: PersonalizationConfig) -> Recommendation:
         s -= sel.repeat_recent_penalty * recent_ids.count(a.id)
         if a.id in avoid:
             s -= 10_000
+        if hard_at_easiest.get(a.id):
+            s -= sel_support.struggle_at_easiest_penalty
         return s, why, sup
+
+    # Repeated struggles at an activity's easiest level: prefer a different activity.
+    sel_support = cfg.support
+    hard_at_easiest = {
+        a.id: struggling_at_easiest(a, [r for r in inp.results if r.activity_id == a.id], cfg)
+        for a in candidates
+    }
 
     scored = []
     for a in candidates:
@@ -495,6 +551,14 @@ def recommend(inp: EngineInput, cfg: PersonalizationConfig) -> Recommendation:
     if cold_start:
         reasons.append(Reason.COLD_START_DEFAULT)
         fallback_reason = fallback_reason or "no_history"
+    avoided = [a for a in candidates if hard_at_easiest[a.id] and a.id != chosen.id]
+    if avoided:
+        reasons.append(Reason.EASIER_ALTERNATIVE)
+        supporting += [
+            Support("activity_result", r.id, "struggled at the easiest level")
+            for a in avoided
+            for r in hard_at_easiest[a.id]
+        ]
 
     # 6. Difficulty for the chosen activity.
     decision = decide_difficulty(
@@ -506,6 +570,17 @@ def recommend(inp: EngineInput, cfg: PersonalizationConfig) -> Recommendation:
     if tired:
         difficulty = chosen.min_difficulty
         reasons.append(Reason.LOW_EFFORT_FOR_FATIGUE)
+    heavy = hint_heavy([r for r in inp.results if r.activity_id == chosen.id], cfg)
+    if heavy:
+        reasons.append(Reason.HINT_SUPPORT)
+        supporting += [Support("activity_result", r.id, f"{r.hints} hints used") for r in heavy]
+    repeated = read_aloud_first(inp.results, cfg)
+    if repeated:
+        reasons.append(Reason.READ_ALOUD_FIRST)
+        supporting += [
+            Support("activity_result", r.id, f"question read aloud {r.instructions_repeated}x")
+            for r in repeated
+        ]
 
     content = inp.content.get(chosen.slug, ContentAvailability(True))
     if content.memory_item_ids:
@@ -532,10 +607,11 @@ def recommend(inp: EngineInput, cfg: PersonalizationConfig) -> Recommendation:
         difficulty=difficulty,
         reasons=reasons,
         supporting=unique,
-        hints_enabled=decision.hints_enabled or tired,
+        hints_enabled=decision.hints_enabled or tired or bool(heavy),
         memory_item_ids=content.memory_item_ids,
         routine_item_ids=content.routine_item_ids,
         fallback_used=fallback_reason is not None,
         fallback_reason=fallback_reason,
         break_minutes=cfg.fatigue.break_minutes if explicit_fatigue else None,
+        read_aloud_first=bool(repeated),
     )

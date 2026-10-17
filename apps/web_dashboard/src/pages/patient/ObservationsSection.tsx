@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   correctObservation,
   createObservation,
@@ -8,7 +9,7 @@ import {
   resolveObservation,
   reviewObservation,
 } from '../../api/observations'
-import type { Observation, ObservationCategory, ObservationStatus } from '../../api/types'
+import type { FatigueLevel, Observation, ObservationCategory, ObservationStatus } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Dialog } from '../../components/ui/Dialog'
@@ -17,7 +18,13 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { ActionError, EmptyState, ErrorState, Loading, Notice } from '../../components/ui/States'
 import { useAction, useAsync } from '../../hooks/useAsync'
 import { formatDateTime, isoToLocalInput, localInputToIso, nowLocalInput } from '../../lib/dates'
-import { OBSERVATION_LABELS, OBSERVATION_STATUS_LABELS, SOURCE_LABELS, options } from '../../lib/labels'
+import {
+  FATIGUE_LEVEL_LABELS,
+  OBSERVATION_LABELS,
+  OBSERVATION_STATUS_LABELS,
+  SOURCE_LABELS,
+  options,
+} from '../../lib/labels'
 import { usePatient } from '../../state/patient'
 
 /** Server 409 codes that mean "someone else changed this": reload and explain. */
@@ -148,6 +155,7 @@ function ObservationItem({ observation: o, onChanged }: { observation: Observati
   const { patient, me, isClinician, isManager } = usePatient()
   const [mode, setMode] = useState<Mode | null>(null)
   const [showHistory, setShowHistory] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const remove = useAction((id: string) => deleteObservation(patient.id, id))
   const mine = o.author_id === me.id
   const tz = patient.timezone
@@ -160,6 +168,7 @@ function ObservationItem({ observation: o, onChanged }: { observation: Observati
         <StatusBadge tone={o.status === 'open' ? 'warning' : o.status === 'resolved' ? 'success' : 'neutral'} label={OBSERVATION_STATUS_LABELS[o.status]} />
         {' '}· noticed {formatDateTime(o.observed_at, tz)} · {mine ? 'by you' : 'by another caregiver'}
       </p>
+      {o.fatigue_level && <p className="field__hint">Level: {FATIGUE_LEVEL_LABELS[o.fatigue_level]}</p>}
       <p>{o.note}</p>
       <p className="field__hint">
         {SOURCE_LABELS[o.source]} · recorded {formatDateTime(o.created_at, tz)}
@@ -183,19 +192,42 @@ function ObservationItem({ observation: o, onChanged }: { observation: Observati
           {showHistory ? 'Hide history' : 'History'}
         </Button>
         {!isClinician && (mine || isManager) && (
-          <Button
-            variant="ghost"
-            onClick={async () => {
-              await remove.run(o.id)
-              onChanged()
-            }}
-            disabled={remove.pending}
-            aria-label={`Delete: ${label}`}
-          >
-            Delete
-          </Button>
+          <>
+            <span className="observation-actions__spacer" aria-hidden="true" />
+            <Button
+              variant="danger-outline"
+              onClick={() => setConfirmDelete(true)}
+              disabled={remove.pending}
+              aria-label={`Delete: ${label}`}
+            >
+              Delete
+            </Button>
+          </>
         )}
       </div>
+      <Dialog
+        open={confirmDelete}
+        title="Delete this note?"
+        onClose={() => setConfirmDelete(false)}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            <Button
+              variant="danger"
+              pending={remove.pending}
+              onClick={async () => {
+                await remove.run(o.id)
+                setConfirmDelete(false)
+                onChanged()
+              }}
+            >
+              Delete note
+            </Button>
+          </>
+        }
+      >
+        <p>{label} will be removed. This cannot be undone.</p>
+      </Dialog>
       <ActionError error={remove.error} />
       {showHistory && <RevisionHistory observation={o} />}
       {mode && (
@@ -215,12 +247,21 @@ function ObservationItem({ observation: o, onChanged }: { observation: Observati
 
 export function ObservationsSection() {
   const { patient, isClinician } = usePatient()
-  const [statusFilter, setStatusFilter] = useState<'' | ObservationStatus>('')
+  const [params] = useSearchParams()
+  const [statusFilter, setStatusFilter] = useState<'' | ObservationStatus>(() => {
+    const s = params.get('status')
+    return s && s in OBSERVATION_STATUS_LABELS ? (s as ObservationStatus) : ''
+  })
   const observations = useAsync(
     (signal) => listObservations(patient.id, { limit: 100, status: statusFilter || undefined }, signal),
     [patient.id, statusFilter],
   )
-  const [form, setForm] = useState({ category: 'fatigue' as ObservationCategory, note: '', observed_at: nowLocalInput() })
+  const [form, setForm] = useState({
+    category: 'fatigue' as ObservationCategory,
+    note: '',
+    observed_at: nowLocalInput(),
+    fatigue_level: 'mild' as FatigueLevel,
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -240,6 +281,7 @@ export function ObservationsSection() {
       category: form.category,
       note: form.note.trim(),
       observed_at: localInputToIso(form.observed_at),
+      fatigue_level: form.category === 'fatigue' ? form.fatigue_level : null,
     })
     if (result) {
       setForm((f) => ({ ...f, note: '' }))
@@ -254,11 +296,27 @@ export function ObservationsSection() {
         <Card title="Add an observation">
           <p className="field__hint">
             Describe what you noticed in everyday words, such as tiredness after lunch or a good
-            mood after a visit. Observations are notes, not medical assessments. Tiredness notes
-            also make activity suggestions gentler for a few hours.
+            mood after a visit. Observations are notes, not medical assessments.
           </p>
+          <details className="details">
+            <summary>How tiredness notes reach the phone</summary>
+            <p className="field__hint">
+              A tiredness note reaches the person's phone when it next syncs: "a little tired" makes
+              activities easier and shorter for a few hours; "very tired" means the next suggestion is
+              a rest and a running activity stops. Only the level and time go to the phone, never your
+              note.
+            </p>
+          </details>
           <form onSubmit={onSubmit} noValidate>
             <SelectField label="About" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as ObservationCategory }))} options={options(OBSERVATION_LABELS)} />
+            {form.category === 'fatigue' && (
+              <SelectField
+                label="How tired"
+                value={form.fatigue_level}
+                onChange={(e) => setForm((f) => ({ ...f, fatigue_level: e.target.value as FatigueLevel }))}
+                options={options(FATIGUE_LEVEL_LABELS)}
+              />
+            )}
             <TextField label="When" type="datetime-local" value={form.observed_at} onChange={(e) => setForm((f) => ({ ...f, observed_at: e.target.value }))} error={errors.observed_at} required />
             <TextArea label="Note" value={form.note} maxLength={2000} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} error={errors.note} required />
             <ActionError error={create.error} />

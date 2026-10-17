@@ -53,7 +53,7 @@ _n = [0]
 
 
 def res(slug, score=0.9, *, mins_ago=None, hints=0, abandoned=False, engagement=None,
-        fatigue=False, rt=None, difficulty=1):
+        fatigue=False, rt=None, difficulty=1, repeats=None):
     _n[0] += 1
     when = NOW - timedelta(minutes=mins_ago if mins_ago is not None else 600 - _n[0])
     return {
@@ -67,6 +67,7 @@ def res(slug, score=0.9, *, mins_ago=None, hints=0, abandoned=False, engagement=
         "engagement": engagement,
         "fatigue_reported": fatigue,
         "mean_response_ms": rt,
+        "instructions_repeated": repeats,
     }
 
 
@@ -111,6 +112,12 @@ S = [
              results=[res("sort-into-groups", mins_ago=100)],
              observations=[{"id": "obs-1", "category": "fatigue",
                             "observed_at": (NOW - timedelta(hours=2)).isoformat().replace("+00:00", "Z")}]),
+    scenario("caregiver_severe_fatigue_offers_break",
+             observations=[{"id": "obs-3", "category": "fatigue", "fatigue_level": "severe",
+                            "observed_at": (NOW - timedelta(hours=1)).isoformat().replace("+00:00", "Z")}]),
+    scenario("caregiver_mild_fatigue_low_effort",
+             observations=[{"id": "obs-4", "category": "fatigue", "fatigue_level": "mild",
+                            "observed_at": (NOW - timedelta(hours=1)).isoformat().replace("+00:00", "Z")}]),
     scenario("old_fatigue_observation_ignored",
              results=[res("sort-into-groups", mins_ago=100)],
              observations=[{"id": "obs-2", "category": "fatigue",
@@ -147,6 +154,23 @@ S = [
     scenario("language_fallback", slugs=["name-the-object"], language="kha"),
     scenario("nothing_available", slugs=["photo-recall"],
              content={"photo-recall": {"sufficient": False}}),
+    # 1.2.0: support that follows what the person needed last time.
+    scenario("hint_heavy_runs_turn_hints_on", slugs=["picture-pairs"],
+             results=[res("picture-pairs", 0.7, hints=3) for _ in range(2)]),
+    scenario("one_hint_heavy_run_is_not_a_pattern", slugs=["picture-pairs"],
+             results=[res("picture-pairs", 0.7, hints=3), res("picture-pairs", 0.9)]),
+    scenario("struggle_at_easiest_prefers_gentler_activity",
+             slugs=["picture-pairs", "name-the-object"],
+             results=[res("name-the-object", 0.2), res("name-the-object", 0.3)]),
+    scenario("struggle_at_easiest_only_activity_keeps_it_with_hints",
+             slugs=["name-the-object"],
+             results=[res("name-the-object", 0.2), res("name-the-object", 0.3)]),
+    scenario("read_aloud_presses_read_questions_first",
+             results=[res("picture-pairs", repeats=2), res("sort-into-groups", repeats=1)]),
+    scenario("too_few_read_aloud_presses",
+             results=[res("picture-pairs", repeats=1), res("sort-into-groups")]),
+    scenario("stop_beats_support_rules", stop=True,
+             results=[res("picture-pairs", 0.7, hints=3, repeats=3) for _ in range(2)]),
 ]
 
 
@@ -164,14 +188,15 @@ def run(sc):
         results=tuple(
             ResultFact(r["id"], r["activity_id"], dt(r["completed_at"]), r["difficulty"], r["score"],
                        r["hints"], r["abandoned"], r["engagement"], r["fatigue_reported"],
-                       r["mean_response_ms"])
+                       r["mean_response_ms"], r.get("instructions_repeated"))
             for r in sc["results"]
         ),
         interests=tuple(sc.get("interests", [])),
         context_tags=tuple(sc.get("context_tags", [])),
         disliked_slugs=frozenset(sc.get("disliked", [])),
         observations=tuple(
-            ObservationFact(o["id"], o["category"], dt(o["observed_at"])) for o in sc.get("observations", [])
+            ObservationFact(o["id"], o["category"], dt(o["observed_at"]), o.get("fatigue_level"))
+            for o in sc.get("observations", [])
         ),
         session_ends=tuple(
             SessionEndFact(s["id"], dt(s["ended_at"]), s["end_reason"]) for s in sc.get("session_ends", [])
@@ -199,6 +224,7 @@ def run(sc):
         "fallback_used": rec.fallback_used,
         "fallback_reason": rec.fallback_reason,
         "break_minutes": rec.break_minutes,
+        "read_aloud_first": rec.read_aloud_first,
     }
 
 

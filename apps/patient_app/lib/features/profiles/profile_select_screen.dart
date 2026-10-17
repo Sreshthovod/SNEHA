@@ -24,14 +24,15 @@ class ProfileSelectScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(s.t('profiles_title')),
         actions: [
-          IconButton(
-            iconSize: 32,
-            tooltip: s.t('home_settings'),
-            icon: const Icon(Icons.settings),
+          // Labelled, not icon-only.
+          TextButton.icon(
+            icon: const Icon(Icons.settings_outlined),
+            label: Text(s.t('home_settings')),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
             ),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: profiles.isEmpty
@@ -82,8 +83,15 @@ class _ProfileTile extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                radius: 36,
-                child: Text(initial, style: theme.textTheme.headlineSmall),
+                radius: 32,
+                backgroundColor: theme.colorScheme.primaryContainer,
+                foregroundColor: theme.colorScheme.onPrimaryContainer,
+                child: Text(
+                  initial,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
               ),
               const SizedBox(width: 20),
               Expanded(
@@ -97,12 +105,18 @@ class _ProfileTile extends StatelessWidget {
                     if (profile.needsRepair)
                       Text(
                         s.t('profiles_needs_repair'),
-                        style: theme.textTheme.bodyMedium,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, size: 36),
+              Icon(
+                Icons.chevron_right,
+                size: 32,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),

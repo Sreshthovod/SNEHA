@@ -72,12 +72,57 @@ class FatigueRules {
     required this.observationWindowHours,
     required this.lowEffortSlugs,
     required this.breakMinutes,
+    required this.caregiverSevereAction,
   });
 
   final double feedbackWindowHours;
   final double observationWindowHours;
   final List<String> lowEffortSlugs;
   final int breakMinutes;
+
+  /// What a "very tired" report does to a running activity:
+  /// `end_session` or `offer_break`.
+  final String caregiverSevereAction;
+}
+
+/// Thresholds for the in-activity comfort policy (adaptation/session_policy.dart).
+class InSessionRules {
+  const InSessionRules({
+    required this.autoHintAfterErrors,
+    required this.autoHintAfterErrorsAssisted,
+    required this.struggledRoundErrors,
+    required this.shortenAfterStruggledRounds,
+    required this.breakAfterStruggledRounds,
+    required this.mildFatigueMaxRemainingRounds,
+  });
+
+  final int autoHintAfterErrors;
+  final int autoHintAfterErrorsAssisted;
+  final int struggledRoundErrors;
+  final int shortenAfterStruggledRounds;
+  final int breakAfterStruggledRounds;
+  final int mildFatigueMaxRemainingRounds;
+}
+
+/// 1.2.0: support that follows what the person needed last time.
+class SupportRules {
+  const SupportRules({
+    required this.hintWindow,
+    required this.hintHeavyMinHints,
+    required this.hintHeavyResults,
+    required this.struggleAtEasiestResults,
+    required this.struggleAtEasiestPenalty,
+    required this.instructionWindow,
+    required this.readAloudAfterRepeats,
+  });
+
+  final int hintWindow;
+  final int hintHeavyMinHints;
+  final int hintHeavyResults;
+  final int struggleAtEasiestResults;
+  final int struggleAtEasiestPenalty;
+  final int instructionWindow;
+  final int readAloudAfterRepeats;
 }
 
 class MemoryRules {
@@ -104,6 +149,8 @@ class EngineConfig {
     required this.difficulty,
     required this.selection,
     required this.fatigue,
+    required this.inSession,
+    required this.support,
     required this.memory,
     required this.activityInterestTags,
     required this.contentLanguages,
@@ -113,13 +160,15 @@ class EngineConfig {
   final DifficultyRules difficulty;
   final SelectionRules selection;
   final FatigueRules fatigue;
+  final InSessionRules inSession;
+  final SupportRules support;
   final MemoryRules memory;
   final Map<String, List<String>> activityInterestTags;
   final Map<String, List<String>> contentLanguages;
 }
 
 const engineConfig = EngineConfig(
-  configVersion: '2026.10.1',
+  configVersion: '2026.10.3',
   difficulty: DifficultyRules(
     successScore: 0.8,
     maxHintsForSuccess: 1,
@@ -159,6 +208,24 @@ const engineConfig = EngineConfig(
     observationWindowHours: 8,
     lowEffortSlugs: ['story-time', 'picture-pairs', 'name-the-object'],
     breakMinutes: 10,
+    caregiverSevereAction: 'end_session',
+  ),
+  inSession: InSessionRules(
+    autoHintAfterErrors: 2,
+    autoHintAfterErrorsAssisted: 1,
+    struggledRoundErrors: 2,
+    shortenAfterStruggledRounds: 2,
+    breakAfterStruggledRounds: 3,
+    mildFatigueMaxRemainingRounds: 1,
+  ),
+  support: SupportRules(
+    hintWindow: 3,
+    hintHeavyMinHints: 2,
+    hintHeavyResults: 2,
+    struggleAtEasiestResults: 2,
+    struggleAtEasiestPenalty: 50,
+    instructionWindow: 3,
+    readAloudAfterRepeats: 3,
   ),
   memory: MemoryRules(
     minPhotoMemories: 3,

@@ -15,6 +15,9 @@ import '../activities/activity_launcher.dart';
 String suggestionWhy(AppStrings s, List<String> codes) {
   bool has(Reason r) => codes.contains(r.code);
   if (has(Reason.lowEffortForFatigue)) return s.t('suggest_why_easy');
+  if (has(Reason.easierAlternative)) return s.t('suggest_why_gentler');
+  if (has(Reason.readAloudFirst)) return s.t('suggest_why_read_aloud');
+  if (has(Reason.hintSupport)) return s.t('suggest_why_hints');
   if (has(Reason.interestMatch)) return s.t('suggest_why_interest');
   if (has(Reason.conversationContextMatch)) return s.t('suggest_why_talk');
   if (has(Reason.memoryContentUsed)) return s.t('suggest_why_memories');
@@ -76,6 +79,11 @@ class SuggestionCardState extends State<SuggestionCard> {
       profile: widget.profile,
       difficulty: _suggestion!.difficulty,
       recommendationId: _suggestion!.recommendationId,
+      hintsAdvised: _suggestion!.hintsEnabled,
+      preferredMemoryIds: _suggestion!.memoryItemIds,
+      readAloudFirst: _suggestion!.readAloudFirst,
+      engineReasonCodes: _suggestion!.reasonCodes,
+      decidedOn: _suggestion!.chosenOnDevice ? 'device' : 'server',
     );
     if (mounted) await refreshAfterActivity();
   }
@@ -95,69 +103,130 @@ class SuggestionCardState extends State<SuggestionCard> {
   Widget build(BuildContext context) {
     final s = context.s;
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final suggestion = _suggestion;
     final activity = _activity;
 
-    Widget body;
-    if (_loading) {
-      body = Text(s.t('suggest_loading'), style: theme.textTheme.bodyLarge);
-    } else if (suggestion == null ||
-        activity == null ||
-        suggestion.action == EngineAction.none ||
-        suggestion.action == EngineAction.stop) {
-      body = Text(s.t('suggest_none'), style: theme.textTheme.bodyLarge);
-    } else {
-      final resting = suggestion.action == EngineAction.breakTime;
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final hasSuggestion =
+        !_loading &&
+        suggestion != null &&
+        activity != null &&
+        suggestion.action != EngineAction.none &&
+        suggestion.action != EngineAction.stop;
+    final resting =
+        hasSuggestion && suggestion.action == EngineAction.breakTime;
+    // A rest suggestion is as positive as an activity: warm, not alarming.
+    final bg = resting ? scheme.tertiaryContainer : scheme.primaryContainer;
+    final fg = resting ? scheme.onTertiaryContainer : scheme.onPrimaryContainer;
+
+    final children = <Widget>[
+      Row(
         children: [
-          if (resting) ...[
-            Text(s.t('suggest_break_title'), style: theme.textTheme.titleLarge),
-            Text(
-              s.t('suggest_break_body', {
-                'minutes': suggestion.breakMinutes ?? 10,
-              }),
-              style: theme.textTheme.bodyLarge,
+          Icon(
+            resting ? Icons.bedtime_outlined : Icons.spa_outlined,
+            size: 28,
+            color: fg,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text(
+                s.t('suggest_title'),
+                style: theme.textTheme.titleMedium?.copyWith(color: fg),
+              ),
             ),
-            const SizedBox(height: 8),
-          ],
-          Text(activity.title, style: theme.textTheme.titleLarge),
-          Text(
-            suggestionWhy(s, suggestion.reasonCodes),
-            style: theme.textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(
-                suggestion.chosenOnDevice
-                    ? Icons.phone_android
-                    : Icons.cloud_done,
-                size: 20,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  suggestion.chosenOnDevice
-                      ? s.t('suggest_device')
-                      : s.t('suggest_server'),
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ),
-            ],
-          ),
-          BigButton(
-            label: resting ? s.t('suggest_easy') : s.t('suggest_start'),
-            icon: resting ? Icons.spa_outlined : Icons.play_arrow,
-            onPressed: _start,
           ),
         ],
+      ),
+      const SizedBox(height: 8),
+    ];
+
+    if (_loading) {
+      // Reserve the space so the page does not jump when it arrives.
+      children.add(
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 96),
+          child: Text(
+            s.t('suggest_loading'),
+            style: theme.textTheme.bodyLarge?.copyWith(color: fg),
+          ),
+        ),
       );
+    } else if (!hasSuggestion) {
+      children.add(
+        Text(
+          s.t('suggest_none'),
+          style: theme.textTheme.bodyLarge?.copyWith(color: fg),
+        ),
+      );
+    } else {
+      children.addAll([
+        if (resting) ...[
+          Text(
+            s.t('suggest_break_title'),
+            style: theme.textTheme.headlineSmall?.copyWith(color: fg),
+          ),
+          Text(
+            s.t('suggest_break_body', {
+              'minutes': suggestion.breakMinutes ?? 10,
+            }),
+            style: theme.textTheme.bodyLarge?.copyWith(color: fg),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Text(
+          activity.title,
+          style:
+              (resting
+                      ? theme.textTheme.titleLarge
+                      : theme.textTheme.headlineSmall)
+                  ?.copyWith(color: fg),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          suggestionWhy(s, suggestion.reasonCodes),
+          style: theme.textTheme.bodyLarge?.copyWith(color: fg),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(
+              suggestion.chosenOnDevice
+                  ? Icons.phone_android
+                  : Icons.cloud_done_outlined,
+              size: 20,
+              color: scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                suggestion.chosenOnDevice
+                    ? s.t('suggest_device')
+                    : s.t('suggest_server'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        BigButton(
+          label: resting ? s.t('suggest_easy') : s.t('suggest_start'),
+          icon: resting ? Icons.spa_outlined : Icons.play_arrow,
+          secondary: resting,
+          onPressed: _start,
+        ),
+      ]);
     }
+
     return SnehaCard(
-      title: s.t('suggest_title'),
-      icon: Icons.auto_awesome_outlined,
-      child: body,
+      color: bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
     );
   }
 }

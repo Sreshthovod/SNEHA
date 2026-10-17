@@ -93,6 +93,8 @@ class _SequenceViewState extends State<_SequenceView> {
         if (_placed.isNotEmpty)
           SnehaCard(
             title: s.t('game_sequence_done'),
+            icon: Icons.check_circle_outline,
+            color: theme.colorScheme.primaryContainer,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -101,7 +103,9 @@ class _SequenceViewState extends State<_SequenceView> {
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Text(
                       '${i + 1}. ${_placed[i]}',
-                      style: theme.textTheme.bodyLarge,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
                     ),
                   ),
               ],
@@ -109,13 +113,15 @@ class _SequenceViewState extends State<_SequenceView> {
           ),
         for (final step in remaining)
           Container(
+            // The hint outlines the next step (shape, not only colour).
+            padding: step == highlight ? const EdgeInsets.all(4) : null,
             decoration: step == highlight
                 ? BoxDecoration(
                     border: Border.all(
                       color: theme.colorScheme.primary,
                       width: 4,
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(22),
                   )
                 : null,
             child: BigButton(
@@ -129,8 +135,7 @@ class _SequenceViewState extends State<_SequenceView> {
         if (_done) ...[
           NoticeBanner(
             message: s.t('runner_correct'),
-            icon: Icons.check_circle,
-            positive: true,
+            tone: NoticeTone.positive,
           ),
           BigButton(
             label: s.t('common_continue'),

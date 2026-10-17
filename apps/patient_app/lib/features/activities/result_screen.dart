@@ -5,6 +5,7 @@ import '../../app_services.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../ui/widgets.dart';
 import 'activity_launcher.dart';
+import 'activity_list_screen.dart';
 
 class RunSummary {
   const RunSummary({
@@ -81,20 +82,31 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 
-  Widget _enjoyCard(BuildContext context) {
-    final s = context.s;
-    final theme = Theme.of(context);
-    if (_answered) {
-      return NoticeBanner(
-        message: s.t('result_enjoy_thanks'),
-        icon: Icons.favorite,
-        positive: true,
+  /// "Choose another activity" always opens the activity list, wherever
+  /// the activity was started from (home suggestion or the list).
+  void _chooseAnother() {
+    final navigator = Navigator.of(context);
+    final profile = widget.profile;
+    navigator.popUntil((r) => r.isFirst);
+    if (profile != null) {
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => ActivityListScreen(profile: profile),
+        ),
       );
     }
+  }
+
+  void _goHome() => Navigator.of(context).popUntil((r) => r.isFirst);
+
+  /// Step 1 of 2: the optional question, with three large answers.
+  Widget _enjoyCard(BuildContext context) {
+    final s = context.s;
     return SnehaCard(
       title: s.t('result_enjoy_question'),
       icon: Icons.sentiment_satisfied_alt,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final (value, key, icon) in [
             ('enjoyed', 'result_enjoy_yes', Icons.sentiment_very_satisfied),
@@ -107,15 +119,45 @@ class _ResultScreenState extends State<ResultScreen> {
               secondary: true,
               onPressed: () => _answer(value),
             ),
+          const SizedBox(height: 4),
           TextButton(
             onPressed: () => _answer(null),
-            child: Text(
-              s.t('result_enjoy_skip'),
-              style: theme.textTheme.bodyLarge,
-            ),
+            child: Text(s.t('result_enjoy_skip')),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _header(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String body,
+    TextStyle? titleStyle,
+  }) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Icon(icon, size: 56, color: theme.colorScheme.primary),
+        const SizedBox(height: 12),
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: titleStyle ?? theme.textTheme.headlineLarge,
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          body,
+          style: theme.textTheme.bodyLarge,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -123,38 +165,61 @@ class _ResultScreenState extends State<ResultScreen> {
   Widget build(BuildContext context) {
     final s = context.s;
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final summary = widget.summary;
     final minutes = (summary.activeTime.inSeconds / 60).ceil().clamp(1, 600);
+    // The big buttons are the only way on from here (no back arrow).
+    final appBar = AppBar(
+      title: Text(summary.activityTitle),
+      automaticallyImplyLeading: false,
+    );
 
     if (summary.tired) {
       return Scaffold(
-        appBar: AppBar(title: Text(summary.activityTitle)),
+        appBar: appBar,
         body: PageBody(
           children: [
-            Icon(
-              Icons.bedtime_outlined,
-              size: 80,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 12),
-            Semantics(
-              header: true,
-              child: Text(
-                s.t('result_tired_title'),
-                style: theme.textTheme.headlineLarge,
-                textAlign: TextAlign.center,
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: scheme.tertiaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Icon(
+                    Icons.bedtime_outlined,
+                    size: 72,
+                    color: scheme.onTertiaryContainer,
+                  ),
+                  const SizedBox(height: 12),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      s.t('result_tired_title'),
+                      style: theme.textTheme.displaySmall?.copyWith(
+                        color: scheme.onTertiaryContainer,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    s.t('result_tired_body'),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: scheme.onTertiaryContainer,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              s.t('result_tired_body'),
-              style: theme.textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
+            const SizedBox(height: 16),
             BigButton(
               label: s.t('result_rest'),
               icon: Icons.home,
-              onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+              onPressed: _goHome,
             ),
             if (widget.profile != null)
               BigButton(
@@ -168,72 +233,95 @@ class _ResultScreenState extends State<ResultScreen> {
       );
     }
 
+    final asking = widget.resultId != null && !_answered;
     return Scaffold(
-      appBar: AppBar(title: Text(summary.activityTitle)),
+      appBar: appBar,
       body: PageBody(
         children: [
-          Icon(
-            summary.stopped ? Icons.favorite_border : Icons.celebration,
-            size: 80,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 12),
-          Semantics(
-            header: true,
-            child: Text(
-              summary.stopped
-                  ? s.t('result_title_stopped')
-                  : s.t('result_title_done'),
-              style: theme.textTheme.headlineLarge,
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            summary.stopped
+          _header(
+            context,
+            icon: summary.stopped
+                ? Icons.favorite_border
+                : Icons.local_florist_outlined,
+            title: summary.stopped
+                ? s.t('result_title_stopped')
+                : s.t('result_title_done'),
+            body: summary.stopped
                 ? s.t('result_body_stopped')
                 : s.t('result_body_done', {'name': summary.activityTitle}),
-            style: theme.textTheme.bodyLarge,
-            textAlign: TextAlign.center,
           ),
+          if (asking) ...[
+            _enjoyCard(context),
+            // Leaving without answering is always fine.
+            TextButton.icon(
+              onPressed: _goHome,
+              icon: const Icon(Icons.home_outlined),
+              label: Text(s.t('result_home')),
+            ),
+          ] else ...[
+            if (_answered)
+              NoticeBanner(
+                message: s.t('result_enjoy_thanks'),
+                icon: Icons.favorite,
+                tone: NoticeTone.positive,
+              ),
+            const SizedBox(height: 4),
+            BigButton(
+              label: s.t('result_again'),
+              icon: Icons.replay,
+              onPressed: () => widget.onPlayAgain(context),
+            ),
+            BigButton(
+              label: s.t('result_home'),
+              icon: Icons.home_outlined,
+              secondary: true,
+              onPressed: _goHome,
+            ),
+            TextButton.icon(
+              onPressed: _chooseAnother,
+              icon: const Icon(Icons.extension_outlined),
+              label: Text(s.t('result_other')),
+            ),
+          ],
+          // What happened, in plain words. Never a score.
           SnehaCard(
+            color: scheme.surfaceContainerLow,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  s.t('result_rounds', {'count': summary.roundsPlayed}),
-                  style: theme.textTheme.bodyLarge,
+                _fact(
+                  context,
+                  Icons.check_circle_outline,
+                  s.tCount('result_rounds', summary.roundsPlayed),
                 ),
-                Text(
+                _fact(
+                  context,
+                  Icons.schedule,
                   s.t('result_time', {'minutes': minutes}),
-                  style: theme.textTheme.bodyLarge,
                 ),
                 if (summary.hints > 0)
-                  Text(
+                  _fact(
+                    context,
+                    Icons.lightbulb_outline,
                     s.t('result_hints', {'count': summary.hints}),
-                    style: theme.textTheme.bodyLarge,
                   ),
               ],
             ),
           ),
-          if (widget.resultId != null) _enjoyCard(context),
-          BigButton(
-            label: s.t('result_again'),
-            icon: Icons.replay,
-            onPressed: () => widget.onPlayAgain(context),
-          ),
-          BigButton(
-            label: s.t('result_other'),
-            icon: Icons.extension,
-            secondary: true,
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          BigButton(
-            label: s.t('result_home'),
-            icon: Icons.home,
-            secondary: true,
-            onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
-          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fact(BuildContext context, IconData icon, String text) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 26, color: theme.colorScheme.primary),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: theme.textTheme.bodyLarge)),
         ],
       ),
     );

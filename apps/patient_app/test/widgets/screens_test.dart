@@ -15,12 +15,15 @@ void main() {
       await settle(tester);
       await tapVisible(tester, find.text('Play an activity'));
 
-      FilledButton startButton(String slug) => tester.widget<FilledButton>(
-        find.ancestor(
-          of: find.text('Start Synthetic $slug'),
-          matching: find.byType(FilledButton),
-        ),
-      );
+      // Start buttons are secondary (outlined) since the redesign; match any
+      // Material button type so this checks enabled state, not styling.
+      ButtonStyleButton startButton(String slug) =>
+          tester.widget<ButtonStyleButton>(
+            find.ancestor(
+              of: find.text('Start Synthetic $slug'),
+              matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+            ),
+          );
       expect(find.text('Coming soon'), findsOneWidget);
       expect(startButton('word-partners').onPressed, isNull);
       expect(startButton('photo-recall').onPressed, isNull);
@@ -157,6 +160,7 @@ void main() {
     await real(tester, () => h.services.recorder.startSession(patientId));
     await tester.pumpWidget(h.app());
     await settle(tester);
+    await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('Sharing and offline'));
     expect(find.text('Waiting to be shared: 1'), findsOneWidget);
     expect(find.text('Not shared yet'), findsOneWidget);
@@ -181,6 +185,7 @@ void main() {
     h.server.authStatus = 401;
     await tester.pumpWidget(h.app());
     await settle(tester, rounds: 20);
+    await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('Sharing and offline'));
     await tapVisible(tester, find.text('Sync now'));
     expect(find.textContaining('needs a new pairing code'), findsWidgets);
@@ -194,6 +199,7 @@ void main() {
     h.server.online = false;
     await tester.pumpWidget(h.app());
     await settle(tester);
+    await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('Privacy'));
     expect(find.textContaining('Not known yet'), findsOneWidget);
 
@@ -233,6 +239,7 @@ void main() {
     h.server.online = false;
     await tester.pumpWidget(h.app());
     await settle(tester);
+    await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('Settings'));
     await tapVisible(tester, find.text('Large'));
     await tapVisible(tester, find.text('High contrast'));

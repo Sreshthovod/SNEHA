@@ -8,13 +8,38 @@ import '../l10n/strings.dart';
 
 /// Content available on this phone for building rounds. Fully offline.
 class ActivityContent {
-  const ActivityContent({this.memories = const [], this.routines = const []});
+  const ActivityContent({
+    this.memories = const [],
+    this.routines = const [],
+    this.preferredMemoryIds = const [],
+    this.links = const [],
+  });
 
   /// Approved memories only.
   final List<MemoryItem> memories;
   final List<RoutineItem> routines;
 
+  /// Caregiver links between the approved memories (e.g. a person in an event).
+  final List<MemoryLinkFact> links;
+
+  /// Approved memories the engine picked as most relevant for this activity
+  /// (interest matches, not recently used), most relevant first. Games use
+  /// them before any others.
+  final List<String> preferredMemoryIds;
+
   List<MemoryItem> get withPhotos => memories.where((m) => m.hasPhoto).toList();
+
+  /// [n] of [items]: the engine's preferred memories first (in its order),
+  /// then the rest in random order.
+  List<MemoryItem> pickPreferred(List<MemoryItem> items, int n, Random rng) {
+    final byId = {for (final m in items) m.id: m};
+    final first = [
+      for (final id in preferredMemoryIds)
+        if (byId[id] != null) byId[id]!,
+    ];
+    final rest = items.where((m) => !first.contains(m)).toList()..shuffle(rng);
+    return [...first, ...rest].take(n).toList();
+  }
 }
 
 /// Per-level parameters for one run (e.g. `pairs`, `options`, `questions`,
@@ -41,6 +66,20 @@ class LevelParams {
     final v = _values[key];
     return v is int && v > 0 ? v : null;
   }
+}
+
+/// Whether an activity run uses the person's approved memories or the bundled
+/// everyday content, and why (reason codes recorded in `activity_started`).
+/// See lib/activities/memory_content.dart for the rules.
+class ContentChoice {
+  const ContentChoice({required this.personal, this.reasons = const []});
+
+  const ContentChoice.generic([this.reasons = const []]) : personal = false;
+
+  final bool personal;
+  final List<String> reasons;
+
+  String get source => personal ? 'personal' : 'generic';
 }
 
 /// What a round reports back to the runner.
@@ -81,6 +120,10 @@ abstract class RoundSpec {
   /// description).
   String? get spokenText => null;
 
+  /// Approved memories this round shows (recorded with its events). Empty for
+  /// everyday content.
+  List<String> get memoryIds => const [];
+
   Widget build(BuildContext context, RoundContext round);
 }
 
@@ -97,6 +140,11 @@ abstract class CognitiveActivity {
   IconData get icon;
 
   bool get usesMemoryBank => false;
+
+  /// Personal or everyday content for this run, with reason codes. Must agree
+  /// with what [createRounds] builds from the same [content].
+  ContentChoice contentChoice(ActivityContent content) =>
+      const ContentChoice.generic();
 
   /// Null when the activity can be played with [content]; otherwise a string
   /// key explaining what is missing (shown as a friendly empty state).

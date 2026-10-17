@@ -37,6 +37,7 @@ EngineInput inputFrom(Map<String, dynamic> sc, DateTime now) {
           engagement: r['engagement'] as String?,
           fatigueReported: r['fatigue_reported'] as bool,
           meanResponseMs: (r['mean_response_ms'] as num?)?.toDouble(),
+          instructionsRepeated: r['instructions_repeated'] as int?,
         ),
     ],
     interests: strings(sc['interests']),
@@ -48,6 +49,7 @@ EngineInput inputFrom(Map<String, dynamic> sc, DateTime now) {
           id: o['id'] as String,
           category: o['category'] as String,
           observedAt: dt(o['observed_at']),
+          fatigueLevel: o['fatigue_level'] as String?,
         ),
     ],
     sessionEnds: [
@@ -107,6 +109,7 @@ void main() {
       expect(rec.fallbackUsed, expected['fallback_used']);
       expect(rec.fallbackReason, expected['fallback_reason']);
       expect(rec.breakMinutes, expected['break_minutes']);
+      expect(rec.readAloudFirst, expected['read_aloud_first']);
       expect(rec.memoryItemIds, expected['memory_item_ids']);
       expect(rec.routineItemIds, expected['routine_item_ids']);
       expect([

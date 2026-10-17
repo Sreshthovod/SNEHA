@@ -10,6 +10,7 @@ from app.core.errors import AppError, conflict, forbidden, not_found
 from app.core.time import utc_now
 from app.models.care import CaregiverObservation, ObservationRevision, Report, RoutineItem
 from app.models.enums import (
+    ObservationCategory,
     ObservationStatus,
     RecordSource,
     ReportStatus,
@@ -33,7 +34,7 @@ from app.schemas.care import (
 from app.schemas.common import ErrorResponse
 from app.services import audit
 from app.services.access import PatientAccess, Permission
-from app.services.changes import log_change
+from app.services.changes import log_change, log_fatigue_change
 from app.services.history import day_bounds
 
 router = APIRouter(prefix="/patients/{patient_id}", tags=["care"])
@@ -88,6 +89,8 @@ def create_observation(
     )
     db.add(obs)
     db.flush()
+    if obs.category is ObservationCategory.FATIGUE:
+        log_fatigue_change(db, obs)
     audit.record(
         db,
         "observation.create",
@@ -158,10 +161,15 @@ def correct_observation(
             correction_reason=body.reason,
         )
     )
+    was_fatigue = obs.category is ObservationCategory.FATIGUE
     for field, value in changes.items():
         setattr(obs, field, value)
+    if obs.category is not ObservationCategory.FATIGUE:
+        obs.fatigue_level = None
     obs.version += 1
     obs.updated_at = utc_now()
+    if was_fatigue or obs.category is ObservationCategory.FATIGUE:
+        log_fatigue_change(db, obs)
     audit.record(
         db,
         "observation.correct",
@@ -286,6 +294,8 @@ def delete_observation(
     if obs.status is not ObservationStatus.OPEN and not access.can(Permission.MANAGE_PATIENT):
         # Once reviewed, the note and its history belong to the care record.
         raise forbidden("Only a managing caregiver can delete a reviewed observation.")
+    if obs.category is ObservationCategory.FATIGUE:
+        log_fatigue_change(db, obs, deleted=True)
     db.delete(obs)
     audit.record(
         db,

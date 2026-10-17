@@ -140,10 +140,11 @@ void main() {
       await answerCorrectly(tester);
     }
     await tapVisible(tester, find.text('Go home'));
+    await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('What I have done'));
     expect(find.text('Synthetic name-the-object'), findsOneWidget);
     expect(find.text('Level 1 of 3'), findsOneWidget);
-    expect(find.text('Played 1 times'), findsOneWidget);
+    expect(find.text('Played 1 time'), findsOneWidget);
     expect(find.textContaining('not a test'), findsOneWidget);
     expect(find.textContaining('%'), findsNothing);
   });
@@ -166,6 +167,7 @@ void main() {
     });
     await tester.pumpWidget(h.app());
     await settle(tester);
+    await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('Sharing and offline'));
 
     expect(find.text('Could not be shared'), findsWidgets);
@@ -219,6 +221,7 @@ void main() {
     addTearDown(h.dispose);
     await tester.pumpWidget(h.app());
     await settle(tester);
+    await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('Settings'));
     await tapVisible(tester, find.text('Read aloud'));
     final saved = await real(tester, () => SettingsRepository(h.local).load());

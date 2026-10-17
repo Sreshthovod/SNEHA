@@ -3,6 +3,7 @@
 from app.db.base import Base
 from app.models.activities import (
     ActivityDefinition,
+    ActivityEvent,
     ActivityRecommendation,
     ActivityResult,
     ActivitySession,
@@ -13,6 +14,7 @@ from app.models.care import (
     ConversationRecord,
     ObservationRevision,
     Report,
+    ReviewItem,
     RoutineItem,
 )
 from app.models.files import StoredFile
@@ -30,6 +32,7 @@ from app.models.users import AuthSession, User
 
 __all__ = [
     "ActivityDefinition",
+    "ActivityEvent",
     "ActivityRecommendation",
     "ActivityResult",
     "ActivitySession",
@@ -49,6 +52,7 @@ __all__ = [
     "PatientProfile",
     "PersonalizationState",
     "Report",
+    "ReviewItem",
     "RoutineItem",
     "StoredFile",
     "SyncChange",

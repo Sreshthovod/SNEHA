@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../activities/registry.dart';
 import '../../app.dart';
 import '../../app_services.dart';
 import '../../data/repositories/profile_repository.dart';
@@ -25,6 +26,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_future != null) return;
+    _load();
+  }
+
+  void _load() {
     final services = AppScope.of(context);
     _future = services.content.catalog().then(
       (catalog) =>
@@ -32,10 +37,17 @@ class _ProgressScreenState extends State<ProgressScreen> {
     );
   }
 
+  IconData _iconFor(ActivityProgress p) =>
+      activityRegistry[p.activity.slug]?.icon ??
+      (p.activity.slug == storyTimeSlug
+          ? Icons.auto_stories
+          : Icons.extension_outlined);
+
   @override
   Widget build(BuildContext context) {
     final s = context.s;
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Scaffold(
       appBar: AppBar(title: Text(s.t('progress_title'))),
       body: FutureBuilder<List<ActivityProgress>>(
@@ -43,51 +55,92 @@ class _ProgressScreenState extends State<ProgressScreen> {
         builder: (context, snap) {
           if (snap.hasError) {
             return MessageView(
-              icon: Icons.error_outline,
+              icon: Icons.cloud_off_outlined,
+              quiet: true,
               title: s.t('error_generic'),
-              body: '',
+              body: s.t('runner_error_body'),
+              action: BigButton(
+                label: s.t('common_retry'),
+                icon: Icons.refresh,
+                onPressed: () => setState(_load),
+              ),
             );
           }
           if (!snap.hasData) return LoadingView(label: s.t('common_loading'));
           final items = snap.data!;
+          Widget line(IconData icon, String text) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Icon(icon, size: 24, color: scheme.onSurfaceVariant),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text(text, style: theme.textTheme.bodyLarge)),
+              ],
+            ),
+          );
           return PageBody(
             children: [
-              Text(s.t('progress_note'), style: theme.textTheme.bodyLarge),
+              Text(
+                s.t('progress_note'),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
               if (items.isEmpty)
-                MessageView(
-                  icon: Icons.hourglass_empty,
-                  title: s.t('progress_empty'),
-                  body: '',
+                SnehaCard(
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.hourglass_empty,
+                        size: 28,
+                        color: scheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          s.t('progress_empty'),
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               for (final p in items)
                 SnehaCard(
                   title: p.activity.title,
-                  icon: Icons.extension,
+                  icon: _iconFor(p),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        s.t('progress_level', {
-                          'level': p.level,
-                          'max': p.maxLevel,
-                        }),
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                      Text(
-                        s.t('progress_played', {'count': p.timesPlayed}),
-                        style: theme.textTheme.bodyLarge,
+                      // Unscored activities (one level only) have no level.
+                      if (p.maxLevel > 1)
+                        line(
+                          Icons.stairs_outlined,
+                          s.t('progress_level', {
+                            'level': p.level,
+                            'max': p.maxLevel,
+                          }),
+                        ),
+                      line(
+                        Icons.replay,
+                        s.tCount('progress_played', p.timesPlayed),
                       ),
                       if (p.lastPlayed != null)
-                        Text(
+                        line(
+                          Icons.event_outlined,
                           s.t('progress_last', {
                             'date': formatLocal(p.lastPlayed!),
                           }),
-                          style: theme.textTheme.bodyLarge,
                         ),
                       if (p.enjoyedCount > 0)
-                        Text(
+                        line(
+                          Icons.sentiment_satisfied_alt,
                           s.t('progress_enjoyed', {'count': p.enjoyedCount}),
-                          style: theme.textTheme.bodyLarge,
                         ),
                     ],
                   ),

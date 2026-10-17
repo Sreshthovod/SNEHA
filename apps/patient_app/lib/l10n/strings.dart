@@ -52,6 +52,17 @@ class AppStrings {
     return value!;
   }
 
+  /// Like [t] with a `{count}`, using the `<key>_one` form for a count of 1
+  /// when the same language table provides it (so a translated sentence is
+  /// never swapped for an English singular).
+  String tCount(String key, int count, [Map<String, Object> args = const {}]) {
+    final own = _tables[languageCode];
+    final table = own != null && own.containsKey(key) ? own : english;
+    final one = '${key}_one';
+    final useOne = count == 1 && table.containsKey(one);
+    return t(useOne ? one : key, {...args, 'count': count});
+  }
+
   static const english = <String, String>{
     'app_name': 'SNEHA',
     'common_continue': 'Continue',
@@ -136,16 +147,18 @@ class AppStrings {
     // Runner
     'runner_round': '{current} of {total}',
     'runner_pause': 'Pause',
-    'runner_resume': 'Continue',
+    'runner_resume': 'Carry on',
     'runner_hint': 'Hint',
     'runner_skip': 'Skip',
     'runner_stop': 'Stop',
     'runner_paused_title': 'Paused',
-    'runner_paused_body': 'Take your time. Tap Continue when you are ready.',
+    'runner_paused_body': 'Take your time. Tap Carry on when you are ready.',
+    'runner_error_body': 'What you did so far is still saved on this phone.',
     'runner_stop_title': 'Stop this activity?',
     'runner_stop_body': "That's fine. What you did so far is saved.",
     'runner_correct': "Yes, that's right!",
     'runner_try_again': 'Not quite. Have another look.',
+    'runner_not_this_one': 'Not this one',
     'runner_saving': 'Saving…',
     // Games
     'game_photo_recall_q': 'What is this photo of?',
@@ -171,6 +184,7 @@ class AppStrings {
         'You took part in {name}. Every time you play is good practice.',
     'result_body_stopped': 'You can come back any time.',
     'result_rounds': 'You played {count} rounds.',
+    'result_rounds_one': 'You played {count} round.',
     'result_time': 'Time spent: {minutes} min',
     'result_hints': 'Hints used: {count}',
     'result_again': 'Play again',
@@ -182,6 +196,8 @@ class AppStrings {
     'story_prompt_2': 'Where was this? What do you remember?',
     'story_prompt_3': 'Would you like to tell someone about it?',
     'story_next': 'Next memory',
+    'story_back': 'Previous memory',
+    'story_position': 'Memory {current} of {total}',
     'story_finish': 'Finish',
     'story_year': 'Around {year}',
     'memory_empty_title': 'No memories yet',
@@ -252,6 +268,8 @@ class AppStrings {
     'settings_text_normal': 'Normal',
     'settings_text_large': 'Large',
     'settings_text_xl': 'Extra large',
+    'settings_preview': 'This is how text will look.',
+    'settings_display_title': 'Screen and sound',
     'settings_contrast': 'High contrast',
     'settings_contrast_body': 'Stronger colours and borders.',
     'settings_motion': 'Reduce motion',
@@ -319,6 +337,9 @@ class AppStrings {
     'suggest_why_talk': 'Matches what we talked about.',
     'suggest_why_enjoyed': 'You enjoyed this before.',
     'suggest_why_easy': 'An easy one, so you can take it gently.',
+    'suggest_why_hints': 'Help will come a little sooner this time.',
+    'suggest_why_gentler': 'Something gentler for today.',
+    'suggest_why_read_aloud': 'Each question will be read aloud for you.',
     'suggest_why_new': 'A good one to start with.',
     'suggest_why_change': 'Something different for a change.',
     'suggest_why_memories': 'Uses your family photos.',
@@ -327,6 +348,48 @@ class AppStrings {
     'suggest_why_default': 'A good one to try.',
     // Tiredness and feedback
     'runner_tired': "I'm tired",
+    // Memory-based activities (activities/memory_content.dart). Every sentence
+    // is filled only with what the family entered and approved.
+    'hint_relationship': '{name} is your {relationship}.',
+    'game_sort_memory_q': 'What does this photo show?',
+    'memory_kind_person': 'A person',
+    'memory_kind_place': 'A place',
+    'memory_kind_event': 'A special day',
+    'memory_kind_object': 'A thing',
+    'story_q_person_rel':
+        'This is {name}, your {relationship}. What do you remember about them?',
+    'story_q_person': 'This is {name}. What do you remember about them?',
+    'story_q_place': 'This is {title}. What do you remember about this place?',
+    'story_q_event': 'This is {title}. What do you remember about that day?',
+    'story_q_object': 'This is {title}. Where did it come from?',
+    'story_fact_person_in': '{name} was there too.',
+    'story_fact_located_at': 'This was at {place}.',
+    // In-activity comfort (adaptation/session_policy.dart)
+    'runner_auto_hint': 'Here is a little help.',
+    'runner_shortened': "Let's finish soon. Just a little more.",
+    'runner_break_title': 'Shall we rest?',
+    'runner_break_body': 'That was a tricky one. A short rest can help.',
+    'runner_break_rest': 'Rest now',
+    'runner_break_continue': 'Keep going',
+    // Caregiver controls (on the patient's phone)
+    'caregiver_button': 'Caregiver',
+    'home_caregiver': 'For caregivers',
+    'caregiver_title': 'For caregivers',
+    'caregiver_intro':
+        'Things a family member or helper can do for {name}. Everything here works without the internet.',
+    'caregiver_report_tiredness': 'Report tiredness',
+    'caregiver_section_today': 'Today',
+    'caregiver_section_phone': 'This phone and privacy',
+    'caregiver_sheet_title': 'How does {name} seem?',
+    'caregiver_sheet_body':
+        'Your answer changes this activity now and the next suggestions.',
+    'caregiver_mild': 'A little tired: make it easier',
+    'caregiver_severe': 'Very tired: stop now',
+    'caregiver_cancel': 'Cancel',
+    'caregiver_reported_mild':
+        'Thank you. Activities will be easier for a while.',
+    'caregiver_reported_severe':
+        'Thank you. The next suggestion will be a rest.',
     'result_tired_title': "Let's take a rest",
     'result_tired_body': 'Thank you for telling us. Resting is a good idea.',
     'result_rest': 'Rest now',
@@ -345,6 +408,7 @@ class AppStrings {
     'progress_empty': 'Nothing played yet. Your activities will appear here.',
     'progress_level': 'Level {level} of {max}',
     'progress_played': 'Played {count} times',
+    'progress_played_one': 'Played {count} time',
     'progress_last': 'Last played: {date}',
     'progress_enjoyed': 'Enjoyed: {count}',
     // Sync problems (local copies are always kept)

@@ -38,7 +38,14 @@ def result_fact(r: ActivityResult) -> engine.ResultFact:
         engagement=r.engagement.value if r.engagement else None,
         fatigue_reported=r.fatigue_reported,
         mean_response_ms=float(mean_ms) if isinstance(mean_ms, int | float) else None,
+        instructions_repeated=_count((r.metrics or {}).get("instructions_repeated")),
     )
+
+
+def _count(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return max(0, int(value))
 
 
 def get_preferences(db: Session, patient_id: str) -> PatientPreferences | None:
@@ -81,7 +88,12 @@ def build_input(
         hours=max(cfg.fatigue.observation_window_hours, cfg.fatigue.feedback_window_hours)
     )
     observations = tuple(
-        engine.ObservationFact(o.id, o.category.value, o.observed_at)
+        engine.ObservationFact(
+            o.id,
+            o.category.value,
+            o.observed_at,
+            o.fatigue_level.value if o.fatigue_level else None,
+        )
         for o in db.scalars(
             select(CaregiverObservation).where(
                 CaregiverObservation.patient_id == patient.id,
@@ -170,6 +182,7 @@ def recommend_and_store(
             "available_slugs": sorted(available_slugs) if available_slugs is not None else None,
             "context_tags": sorted(context_tags or []),
             "break_minutes": rec.break_minutes,
+            "read_aloud_first": rec.read_aloud_first,
         },
     )
     db.add(row)

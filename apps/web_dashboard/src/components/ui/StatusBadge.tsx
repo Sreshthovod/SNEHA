@@ -1,10 +1,11 @@
-export type StatusTone = 'success' | 'warning' | 'danger' | 'neutral'
+export type StatusTone = 'success' | 'warning' | 'danger' | 'neutral' | 'info'
 
 const SYMBOL: Record<StatusTone, string> = {
   success: '●',
   warning: '▲',
   danger: '■',
   neutral: '○',
+  info: '◆',
 }
 
 interface StatusBadgeProps {

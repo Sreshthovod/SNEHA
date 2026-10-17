@@ -71,6 +71,28 @@
         "title": "ActivityDefinitionOut",
         "type": "object"
       },
+      "ActivityEventType": {
+        "description": "One thing that happened inside an activity run (migration 0009).\n\nEvents are recorded on the phone as they happen and pushed with the outbox, so a\ncaregiver can see what happened and what the app did in response.",
+        "enum": [
+          "activity_started",
+          "attempt",
+          "hint_requested",
+          "hint_auto",
+          "round_solved",
+          "round_skipped",
+          "paused",
+          "resumed",
+          "fatigue_reported",
+          "stop_requested",
+          "adaptation",
+          "break_taken",
+          "break_declined",
+          "activity_ended",
+          "instructions_repeated"
+        ],
+        "title": "ActivityEventType",
+        "type": "string"
+      },
       "ActivityMetrics": {
         "properties": {
           "accuracy_mean": {
@@ -395,6 +417,12 @@
             },
             "title": "Review Flags",
             "type": "array"
+          },
+          "review_flags_withheld": {
+            "default": false,
+            "description": "True for clinicians: automated prompts are not shown to them. They see only items a caregiver confirmed (GET /patients/{id}/review-items).",
+            "title": "Review Flags Withheld",
+            "type": "boolean"
           },
           "rules_not_evaluated": {
             "items": {
@@ -1589,6 +1617,379 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "EventData": {
+        "additionalProperties": false,
+        "description": "Small, typed values only. There is deliberately no free-text field.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "continue",
+                  "show_hint",
+                  "shorten",
+                  "offer_break",
+                  "end_session"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "content_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "personal",
+                  "generic"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "activity_started: personal (approved memories) or generic",
+            "title": "Content Source"
+          },
+          "correct": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct"
+          },
+          "decided_on": {
+            "anyOf": [
+              {
+                "enum": [
+                  "device",
+                  "server"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "activity_started: 'device' (offline engine) or 'server'; absent when the person chose the activity themselves",
+            "title": "Decided On"
+          },
+          "difficulty": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difficulty"
+          },
+          "engine_reason_codes": {
+            "description": "activity_started: the engine's reasons",
+            "items": {
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$",
+              "type": "string"
+            },
+            "maxItems": 16,
+            "title": "Engine Reason Codes",
+            "type": "array"
+          },
+          "hint_number": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint Number"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "maximum": 3600000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "mild",
+                  "severe"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "memory_id": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The memory this round shows",
+            "title": "Memory Id"
+          },
+          "memory_ids": {
+            "description": "activity_started: every memory used",
+            "items": {
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Memory Ids",
+            "type": "array"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "completed",
+                  "stopped",
+                  "tired",
+                  "shortened",
+                  "ended_by_policy"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "reason_codes": {
+            "items": {
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Reason Codes",
+            "type": "array"
+          },
+          "rounds_planned": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds Planned"
+          },
+          "rounds_remaining": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rounds Remaining"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "patient",
+                  "caregiver",
+                  "system"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "title": "EventData",
+        "type": "object"
+      },
+      "EventMutation": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EventPayload"
+          },
+          "entity_type": {
+            "const": "activity_event",
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "mutation_id": {
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Mutation Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "upsert",
+            "default": "upsert",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mutation_id",
+          "entity_type",
+          "data"
+        ],
+        "title": "EventMutation",
+        "type": "object"
+      },
+      "EventOut": {
+        "properties": {
+          "activity_id": {
+            "title": "Activity Id",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/ActivityEventType"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "round_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Index"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "activity_id",
+          "seq",
+          "event_type",
+          "occurred_at",
+          "round_index",
+          "data"
+        ],
+        "title": "EventOut",
+        "type": "object"
+      },
+      "EventPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "activity_id": {
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Activity Id",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/EventData"
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/ActivityEventType"
+          },
+          "id": {
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "round_index": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Round Index"
+          },
+          "seq": {
+            "description": "Order within the session.",
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Seq",
+            "type": "integer"
+          },
+          "session_id": {
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Session Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "activity_id",
+          "seq",
+          "event_type",
+          "occurred_at"
+        ],
+        "title": "EventPayload",
+        "type": "object"
+      },
       "FallbackOut": {
         "properties": {
           "reason": {
@@ -1612,6 +2013,72 @@
           "reason"
         ],
         "title": "FallbackOut",
+        "type": "object"
+      },
+      "FatigueLevel": {
+        "description": "How tired the person seemed (fatigue observations only; migration 0010).",
+        "enum": [
+          "mild",
+          "severe"
+        ],
+        "title": "FatigueLevel",
+        "type": "string"
+      },
+      "FatigueReportMutation": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/FatigueReportPayload"
+          },
+          "entity_type": {
+            "const": "fatigue_report",
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "mutation_id": {
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Mutation Id",
+            "type": "string"
+          },
+          "operation": {
+            "const": "upsert",
+            "default": "upsert",
+            "title": "Operation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mutation_id",
+          "entity_type",
+          "data"
+        ],
+        "title": "FatigueReportMutation",
+        "type": "object"
+      },
+      "FatigueReportPayload": {
+        "additionalProperties": false,
+        "description": "A caregiver's tiredness report made on the patient's phone. Level and time only:\nthere is deliberately no free-text field.",
+        "properties": {
+          "id": {
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "$ref": "#/components/schemas/FatigueLevel"
+          },
+          "reported_at": {
+            "format": "date-time",
+            "title": "Reported At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "level",
+          "reported_at"
+        ],
+        "title": "FatigueReportPayload",
         "type": "object"
       },
       "FeatureStatus": {
@@ -1990,6 +2457,20 @@
             ],
             "title": "Media File Id"
           },
+          "relationship": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Person memories only: how this person is related to the patient, as the caregiver states it (e.g. 'granddaughter'). Used for gentle hints and story prompts. Send null to clear.",
+            "title": "Relationship"
+          },
           "tags": {
             "anyOf": [
               {
@@ -2083,6 +2564,20 @@
               }
             ],
             "title": "Media File Id"
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Person memories only: how this person is related to the patient, as the caregiver states it (e.g. 'granddaughter'). Used for gentle hints and story prompts.",
+            "title": "Relationship"
           },
           "tags": {
             "items": {
@@ -2224,6 +2719,17 @@
           "patient_id": {
             "title": "Patient Id",
             "type": "string"
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship"
           },
           "review_note": {
             "anyOf": [
@@ -2539,6 +3045,16 @@
             "title": "Expected Version",
             "type": "integer"
           },
+          "fatigue_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FatigueLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "note": {
             "anyOf": [
               {
@@ -2585,6 +3101,17 @@
           "category": {
             "$ref": "#/components/schemas/ObservationCategory"
           },
+          "fatigue_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FatigueLevel"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only for category 'fatigue'. 'severe' means the next suggestion is a rest, and the patient's phone stops a running activity once it has synced."
+          },
           "note": {
             "maxLength": 2000,
             "minLength": 1,
@@ -2625,6 +3152,16 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "fatigue_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FatigueLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "title": "Id",
@@ -3811,6 +4348,12 @@
             "title": "Patient Id",
             "type": "string"
           },
+          "read_aloud_first": {
+            "default": false,
+            "description": "Read each question aloud when it appears (the person often asked to hear it again). Applied only if read-aloud is switched on and a voice exists.",
+            "title": "Read Aloud First",
+            "type": "boolean"
+          },
           "reason_codes": {
             "items": {
               "type": "string"
@@ -4557,6 +5100,32 @@
         "title": "ResultSubmissionOut",
         "type": "object"
       },
+      "ReviewDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "enum": [
+              "confirmed",
+              "dismissed"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why: what the caregiver knows (required for both decisions; kept).",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "title": "ReviewDecision",
+        "type": "object"
+      },
       "ReviewFlag": {
         "properties": {
           "explanation": {
@@ -4594,7 +5163,7 @@
             "type": "string"
           },
           "wording": {
-            "default": "May be worth a caregiver or clinician taking a look. Not a finding.",
+            "default": "Not a finding. An automated prompt that a caregiver reviews before anything is shared with a clinician.",
             "title": "Wording",
             "type": "string"
           }
@@ -4640,6 +5209,12 @@
             "title": "Review Flags",
             "type": "array"
           },
+          "review_flags_withheld": {
+            "default": false,
+            "description": "True for clinicians: automated prompts are not shown to them. They see only items a caregiver confirmed (GET /patients/{id}/review-items).",
+            "title": "Review Flags Withheld",
+            "type": "boolean"
+          },
           "rules_not_evaluated": {
             "items": {
               "$ref": "#/components/schemas/RuleNotEvaluated"
@@ -4664,6 +5239,174 @@
           "disclaimer"
         ],
         "title": "ReviewFlagsResponse",
+        "type": "object"
+      },
+      "ReviewItemOut": {
+        "properties": {
+          "config_version": {
+            "title": "Config Version",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By Id"
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Reason"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "change",
+              "data",
+              "context"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
+          },
+          "numbers": {
+            "additionalProperties": true,
+            "title": "Numbers",
+            "type": "object"
+          },
+          "observation_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Observation Ids",
+            "type": "array"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReviewItemStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "wording": {
+            "default": "An automated prompt from the person's own activity records. It is not a diagnosis and not a finding. A caregiver confirms or dismisses it; only confirmed items are shared with a clinician for discussion.",
+            "title": "Wording",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "rule_id",
+          "kind",
+          "title",
+          "explanation",
+          "numbers",
+          "observation_ids",
+          "period_start",
+          "period_end",
+          "method_version",
+          "config_version",
+          "status",
+          "decided_by_id",
+          "decided_at",
+          "decision_reason",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ReviewItemOut",
+        "type": "object"
+      },
+      "ReviewItemStatus": {
+        "description": "Human review of an automated review prompt (migration 0011).\n\nNothing reaches a clinician as a concern until a caregiver confirms it, and a decision\nalways records who made it, when and why.",
+        "enum": [
+          "awaiting_review",
+          "confirmed",
+          "dismissed"
+        ],
+        "title": "ReviewItemStatus",
+        "type": "string"
+      },
+      "ReviewScanRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "period_end": {
+            "format": "date",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date",
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end"
+        ],
+        "title": "ReviewScanRequest",
         "type": "object"
       },
       "RoutineCreate": {
@@ -5102,7 +5845,9 @@
           "memory_item",
           "memory_relationship",
           "routine_item",
-          "activity_definition"
+          "activity_definition",
+          "activity_event",
+          "fatigue_report"
         ],
         "title": "SyncEntity",
         "type": "string"
@@ -5164,9 +5909,11 @@
             "items": {
               "discriminator": {
                 "mapping": {
+                  "activity_event": "#/components/schemas/EventMutation",
                   "activity_result": "#/components/schemas/ResultMutation",
                   "activity_session": "#/components/schemas/SessionMutation",
                   "conversation": "#/components/schemas/ConversationMutation",
+                  "fatigue_report": "#/components/schemas/FatigueReportMutation",
                   "personalization_state": "#/components/schemas/PersonalizationMutation"
                 },
                 "propertyName": "entity_type"
@@ -5183,6 +5930,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/PersonalizationMutation"
+                },
+                {
+                  "$ref": "#/components/schemas/EventMutation"
+                },
+                {
+                  "$ref": "#/components/schemas/FatigueReportMutation"
                 }
               ]
             },
@@ -11160,6 +11913,344 @@
         ]
       }
     },
+    "/api/v1/patients/{patient_id}/review-items": {
+      "get": {
+        "description": "Caregivers see every item. Clinicians see only items a caregiver confirmed.",
+        "operationId": "list_review_items_api_v1_patients__patient_id__review_items_get",
+        "parameters": [
+          {
+            "description": "Patient profile ID",
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "description": "Patient profile ID",
+              "format": "uuid",
+              "title": "Patient Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReviewItemStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewItemOut"
+                  },
+                  "title": "Response List Review Items Api V1 Patients  Patient Id  Review Items Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Review Items",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/review-items/scan": {
+      "post": {
+        "description": "Run the review rules over stored data for the period and keep what they raise as\nitems awaiting a caregiver's review. Safe to repeat.",
+        "operationId": "scan_review_items_api_v1_patients__patient_id__review_items_scan_post",
+        "parameters": [
+          {
+            "description": "Patient profile ID",
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "description": "Patient profile ID",
+              "format": "uuid",
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReviewItemOut"
+                  },
+                  "title": "Response Scan Review Items Api V1 Patients  Patient Id  Review Items Scan Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Scan Review Items",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/review-items/{item_id}/decision": {
+      "post": {
+        "description": "Confirm (worth discussing with a clinician) or dismiss (explained), with a reason.\nA decision is final; it is recorded with who made it and when.",
+        "operationId": "decide_review_item_api_v1_patients__patient_id__review_items__item_id__decision_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Patient profile ID",
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "description": "Patient profile ID",
+              "format": "uuid",
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decide Review Item",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/v1/patients/{patient_id}/routines": {
       "get": {
         "operationId": "list_routines_api_v1_patients__patient_id__routines_get",
@@ -11763,6 +12854,110 @@
           }
         ],
         "summary": "Complete Session",
+        "tags": [
+          "activities"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/sessions/{session_id}/events": {
+      "get": {
+        "description": "What happened inside the session, in order: answers, hints, pauses, tiredness\nreports, stop requests and every in-session adaptation decision with its reasons.",
+        "operationId": "list_events_api_v1_patients__patient_id__sessions__session_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Patient profile ID",
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "description": "Patient profile ID",
+              "format": "uuid",
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EventOut"
+                  },
+                  "title": "Response List Events Api V1 Patients  Patient Id  Sessions  Session Id  Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Events",
         "tags": [
           "activities"
         ]

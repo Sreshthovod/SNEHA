@@ -17,7 +17,7 @@ void main() {
     );
     addTearDown(local.close);
     expect(await local.db.getVersion(), LocalDatabase.schemaVersion);
-    expect(LocalDatabase.schemaVersion, 4);
+    expect(LocalDatabase.schemaVersion, 6);
     final tables = (await local.db.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     )).map((r) => r['name']).toSet();
@@ -38,6 +38,8 @@ void main() {
         'sync_state',
         'preferences',
         'catalog_specs',
+        'activity_events',
+        'fatigue_reports',
       ]),
     );
   });
@@ -140,8 +142,29 @@ void main() {
       path: path,
     );
     addTearDown(v4.close);
-    expect(await v4.db.getVersion(), 4);
+    expect(await v4.db.getVersion(), LocalDatabase.schemaVersion);
     expect((await v4.db.query('settings')).single['value'], 'v');
     expect(await v4.db.query('catalog_specs'), isEmpty);
+  });
+
+  test('v4 database upgrades to v5 (events, fatigue reports)', () async {
+    final path =
+        '${Directory.systemTemp.createTempSync('sneha_v5').path}/up.db';
+    final v4 = await LocalDatabase.open(
+      factory: databaseFactoryFfi,
+      path: path,
+      version: 4,
+    );
+    await v4.db.insert('settings', {'key': 'k', 'value': 'v'});
+    await v4.close();
+    final v5 = await LocalDatabase.open(
+      factory: databaseFactoryFfi,
+      path: path,
+    );
+    addTearDown(v5.close);
+    expect(await v5.db.getVersion(), LocalDatabase.schemaVersion);
+    expect((await v5.db.query('settings')).single['value'], 'v');
+    expect(await v5.db.query('activity_events'), isEmpty);
+    expect(await v5.db.query('fatigue_reports'), isEmpty);
   });
 }

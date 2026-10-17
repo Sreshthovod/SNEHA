@@ -81,6 +81,7 @@ def to_out(db, rec: ActivityRecommendation) -> RecommendationOut:
         instructions=spec.instructions if spec else None,
         hints_enabled=rec.hints_enabled,
         break_minutes=(rec.request_context or {}).get("break_minutes"),
+        read_aloud_first=bool((rec.request_context or {}).get("read_aloud_first")),
         reason_codes=list(rec.reason_codes),
         supporting=[SupportOut(**s) for s in rec.supporting],
         content_refs={k: list(v) for k, v in (rec.content_refs or {}).items()},

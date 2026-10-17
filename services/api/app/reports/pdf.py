@@ -47,6 +47,41 @@ class ObservationLine:
     status: str
     source: str
     note: str
+    fatigue_level: str | None = None
+
+
+@dataclass(frozen=True)
+class ReviewItemLine:
+    rule_id: str
+    title: str
+    explanation: str
+    numbers: dict
+    status: str  # awaiting_review | confirmed | dismissed
+    decided_at: datetime | None = None
+    decision_reason: str | None = None
+
+
+@dataclass(frozen=True)
+class TirednessCounts:
+    """Tiredness reports in the period, by who reported them. Each report counted once."""
+
+    patient_button: int = 0  # "I'm tired" on the phone
+    caregiver_phone_mild: int = 0
+    caregiver_phone_severe: int = 0
+    dashboard_mild: int = 0
+    dashboard_severe: int = 0
+    dashboard_no_level: int = 0
+
+    @property
+    def total(self) -> int:
+        return (
+            self.patient_button
+            + self.caregiver_phone_mild
+            + self.caregiver_phone_severe
+            + self.dashboard_mild
+            + self.dashboard_severe
+            + self.dashboard_no_level
+        )
 
 
 @dataclass(frozen=True)
@@ -57,6 +92,8 @@ class ReportInput:
     observations: list[ObservationLine]
     config: AnalyticsConfig
     generated_at: datetime
+    review_items: list[ReviewItemLine] | None = None
+    tiredness: TirednessCounts | None = None
 
 
 # ---------------------------------------------------------------- fonts
@@ -202,6 +239,23 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
         ),
         Spacer(1, 6),
         notice(["Important: " + s.disclaimer]),
+    ]
+
+    part = ParagraphStyle("part", parent=h1, fontSize=14.5, leading=18, spaceBefore=12)
+    story += [
+        Spacer(1, 4),
+        p(
+            "This report has three parts. Part 1 is what was recorded. Part 2 is what the "
+            "automatic rules point out (an interpretation, not a finding). Part 3 is what a "
+            "caregiver has confirmed as worth discussing with a clinician.",
+            small,
+        ),
+        p("Part 1. What was recorded", part),
+        p(
+            "Counts and measures straight from stored activity records and caregiver notes. "
+            "Nothing is estimated and missing days are not filled in.",
+            small,
+        ),
     ]
 
     # Data completeness and missing-data warnings
@@ -392,18 +446,91 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
             p("No comparison was made because there is not enough earlier activity (see above).")
         )
 
-    # Review prompts
-    story.append(p("Review prompts", h2))
-    if s.review_flags:
+    # Tiredness reports
+    story.append(p("Tiredness reports", h2))
+    tired = data.tiredness or TirednessCounts()
+    if tired.total == 0:
+        story.append(p("No tiredness was reported in this period."))
+    else:
+        story.append(
+            table(
+                [
+                    ["Reported by", "A little tired", "Very tired", "Level not given"],
+                    ['The person ("I\'m tired" button)', "–", "–", str(tired.patient_button)],
+                    [
+                        "A caregiver, on the person's phone",
+                        str(tired.caregiver_phone_mild),
+                        str(tired.caregiver_phone_severe),
+                        "–",
+                    ],
+                    [
+                        "A caregiver, on the dashboard",
+                        str(tired.dashboard_mild),
+                        str(tired.dashboard_severe),
+                        str(tired.dashboard_no_level),
+                    ],
+                ],
+                [70 * mm, 33 * mm, 33 * mm, 34 * mm],
+            )
+        )
         story.append(
             p(
-                "These suggest that a repeated change may be worth discussing. "
-                "They are not findings "
-                "and do not indicate any condition.",
+                "Each report is counted once. A tiredness report makes the app easier and "
+                "shorter, or stops it; it is never counted as a mistake.",
                 small,
             )
         )
+
+    # Caregiver observations
+    story.append(p("Caregiver observations", h2))
+    if data.observations:
+        story.append(
+            table(
+                [["When", "Topic", "Status", "Note"]]
+                + [
+                    [
+                        f"{o.observed_at.astimezone(tz):%d %b %H:%M}",
+                        o.category
+                        + (
+                            {"mild": " (a little tired)", "severe": " (very tired)"}.get(
+                                o.fatigue_level or "", ""
+                            )
+                        ),
+                        o.status,
+                        o.note,
+                    ]
+                    for o in data.observations
+                ],
+                [26 * mm, 40 * mm, 18 * mm, 86 * mm],
+            )
+        )
+        story.append(p("Notes are printed exactly as the caregiver wrote them.", small))
+    else:
+        story.append(p("No caregiver observations were recorded in this period."))
+
+    # Part 2: automatic rules (interpretation)
+    items = data.review_items or []
+    by_rule = {i.rule_id: i for i in items}
+    story += [
+        p("Part 2. What the automatic rules point out", part),
+        p(
+            "Review prompts compare this period with the person's own earlier activity using "
+            "fixed, published rules (below). They are interpretations of game behaviour, not "
+            "findings, and do not indicate any condition. A prompt only becomes something to "
+            "discuss with a clinician when a caregiver confirms it (Part 3).",
+            small,
+        ),
+        p("Review prompts", h2),
+    ]
+    if s.review_flags:
         for flag in s.review_flags:
+            item = by_rule.get(flag.rule_id)
+            state = {
+                None: "Not yet reviewed by a caregiver.",
+                "awaiting_review": "Awaiting caregiver review. Not a concern unless confirmed.",
+                "confirmed": "Confirmed by a caregiver (see Part 3).",
+                "dismissed": "Dismissed by a caregiver (see Part 3).",
+            }[item.status if item else None]
             story.append(
                 KeepTogether(
                     [
@@ -417,6 +544,7 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
                             + ", ".join(f"{k} = {v}" for k, v in flag.numbers.items()),
                             small,
                         ),
+                        p("Status: " + state, small),
                     ]
                 )
             )
@@ -425,28 +553,44 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
     if s.rules_not_evaluated:
         story.append(
             p(
-                "Not checked: "
+                "Not checked, because there was not enough data: "
                 + "; ".join(f"{r.rule_id} ({r.reason})" for r in s.rules_not_evaluated)
-                + ".",
+                + ". Too little data is never treated as a change.",
                 small,
             )
         )
 
-    # Caregiver observations
-    story.append(p("Caregiver observations", h2))
-    if data.observations:
-        story.append(
-            table(
-                [["When", "Topic", "Status", "Note"]]
-                + [
-                    [f"{o.observed_at.astimezone(tz):%d %b %H:%M}", o.category, o.status, o.note]
-                    for o in data.observations
-                ],
-                [28 * mm, 22 * mm, 20 * mm, 100 * mm],
-            )
-        )
+    # Part 3: caregiver decisions
+    confirmed = [i for i in items if i.status == "confirmed"]
+    dismissed = [i for i in items if i.status == "dismissed"]
+    story += [
+        p("Part 3. What a caregiver confirmed", part),
+        p(
+            "A caregiver who knows the person read each prompt and its numbers, and decided "
+            "whether it is worth discussing with a clinician. Their reason is printed as "
+            "written. This is still not a diagnosis.",
+            small,
+        ),
+        p("Confirmed as worth discussing with a clinician", h2),
+    ]
+
+    def decided(i: ReviewItemLine) -> list:
+        when = f"{i.decided_at.astimezone(tz):%d %b %Y}" if i.decided_at else "–"
+        return [
+            p(f"{i.title} ({i.rule_id})", ParagraphStyle("ct", parent=body, fontName=bold)),
+            p(i.explanation),
+            p(f"Caregiver's reason ({when}): {i.decision_reason or '–'}", small),
+        ]
+
+    if confirmed:
+        for i in confirmed:
+            story.append(KeepTogether(decided(i)))
     else:
-        story.append(p("No caregiver observations were recorded in this period."))
+        story.append(p("Nothing has been confirmed by a caregiver for this period."))
+    if dismissed:
+        story.append(p("Dismissed by a caregiver", h2))
+        for i in dismissed:
+            story.append(KeepTogether(decided(i)))
 
     # Methodology
     r = data.config.review

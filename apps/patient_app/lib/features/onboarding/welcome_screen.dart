@@ -25,7 +25,25 @@ class WelcomeScreen extends StatelessWidget {
     return Scaffold(
       body: PageBody(
         children: [
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.spa_outlined,
+                size: 28,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                s.t('app_name'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.secondary,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Semantics(
             header: true,
             child: Text(

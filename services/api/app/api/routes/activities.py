@@ -9,7 +9,12 @@ from sqlalchemy import select
 from app.api.deps import DbSessionDep, PrincipalDep, patient_access
 from app.core.errors import AppError
 from app.core.time import utc_now
-from app.models.activities import ActivityDefinition, ActivityResult, ActivitySession
+from app.models.activities import (
+    ActivityDefinition,
+    ActivityEvent,
+    ActivityResult,
+    ActivitySession,
+)
 from app.models.enums import RecordSource, UserRole
 from app.schemas.activities import (
     ActivityDefinitionOut,
@@ -21,6 +26,7 @@ from app.schemas.activities import (
     SessionOut,
 )
 from app.schemas.common import ErrorResponse
+from app.schemas.events import EventOut
 from app.services import activities
 from app.services.access import PatientAccess, Permission
 from app.services.history import MAX_HISTORY_DAYS, performance_history
@@ -131,6 +137,28 @@ def list_results(
             select(ActivityResult)
             .where(ActivityResult.session_id == session.id)
             .order_by(ActivityResult.started_at)
+        )
+    )
+
+
+@router.get(
+    "/patients/{patient_id}/sessions/{session_id}/events",
+    response_model=list[EventOut],
+    responses=_ERRORS,
+)
+def list_events(
+    session_id: str,
+    db: DbSessionDep,
+    access: PatientAccess = patient_access(Permission.VIEW_HISTORY),
+) -> list[ActivityEvent]:
+    """What happened inside the session, in order: answers, hints, pauses, tiredness
+    reports, stop requests and every in-session adaptation decision with its reasons."""
+    session = activities.get_session_for_patient(db, access.patient.id, session_id)
+    return list(
+        db.scalars(
+            select(ActivityEvent)
+            .where(ActivityEvent.session_id == session.id)
+            .order_by(ActivityEvent.seq, ActivityEvent.occurred_at)
         )
     )
 
