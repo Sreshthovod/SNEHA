@@ -33,12 +33,13 @@ services:
         value: https://sneha-dashboard.onrender.com
       # Account emails (verification, password reset) through Brevo's HTTPS API: Render's
       # free plan blocks outgoing SMTP. SNEHA_BREVO_API_KEY and SNEHA_EMAIL_FROM are entered
-      # in the Render dashboard, never in this file. Set SNEHA_REQUIRE_EMAIL_VERIFICATION=true
-      # once delivery has been checked. (The SMTP values are only for hosts that allow SMTP.)
+      # in the Render dashboard, never in this file. Delivery was checked
+      # (2026-10-18), so sign-in waits for email confirmation. (The SMTP values are only
+      # for hosts that allow SMTP.)
       - key: SNEHA_EMAIL_BACKEND
         value: brevo_api
       - key: SNEHA_REQUIRE_EMAIL_VERIFICATION
-        value: "false"
+        value: "true"
       - key: SNEHA_BREVO_API_KEY
         sync: false
       - key: SNEHA_EMAIL_FROM
