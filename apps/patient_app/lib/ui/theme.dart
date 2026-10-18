@@ -30,6 +30,16 @@ class SnehaTheme {
   static bool isHighContrast(ThemeData theme) =>
       theme.extension<SnehaThemeFlags>()?.highContrast ?? false;
 
+  /// Decorations for [theme]; null gradients mean "use solid colours".
+  static SnehaThemeFlags flags(ThemeData theme) =>
+      theme.extension<SnehaThemeFlags>() ??
+      const SnehaThemeFlags(highContrast: false);
+
+  /// True when the person or the phone asked for less motion.
+  static bool reduceMotion(BuildContext context) =>
+      MediaQuery.disableAnimationsOf(context) ||
+      flags(Theme.of(context)).reduceMotion;
+
   static ThemeData light({
     bool highContrast = false,
     bool reduceMotion = false,
@@ -46,35 +56,37 @@ class SnehaTheme {
     if (brightness == Brightness.light && !highContrast) {
       return const ColorScheme(
         brightness: Brightness.light,
-        surface: Color(0xFFFAF8F3),
+        surface: Color(0xFFFBFAF7),
         surfaceContainerLowest: Color(0xFFFFFFFF),
-        surfaceContainerLow: Color(0xFFF4F6F1),
-        surfaceContainer: Color(0xFFEEF2EC),
+        surfaceContainerLow: Color(0xFFF3F7F4),
+        surfaceContainer: Color(0xFFECF5EF),
         surfaceContainerHigh: Color(0xFFFFFFFF),
-        surfaceContainerHighest: Color(0xFFE2EAE0),
-        onSurface: Color(0xFF202C25),
-        onSurfaceVariant: Color(0xFF4F5A53),
-        primary: Color(0xFF3F7057),
+        surfaceContainerHighest: Color(0xFFDDF0E5),
+        onSurface: Color(0xFF17231C),
+        onSurfaceVariant: Color(0xFF475550),
+        // Emerald, teal and violet: bright, and all dark enough for white
+        // text (>= 4.5:1).
+        primary: Color(0xFF047857),
         onPrimary: Color(0xFFFFFFFF),
-        primaryContainer: Color(0xFFD5E6D9),
-        onPrimaryContainer: Color(0xFF173326),
-        secondary: Color(0xFF244C3A),
+        primaryContainer: Color(0xFFD1FAE5),
+        onPrimaryContainer: Color(0xFF064E3B),
+        secondary: Color(0xFF0F766E),
         onSecondary: Color(0xFFFFFFFF),
-        secondaryContainer: Color(0xFFE8EFE7),
-        onSecondaryContainer: Color(0xFF1E2B22),
-        tertiary: Color(0xFF9A5540),
+        secondaryContainer: Color(0xFFCCFBF1),
+        onSecondaryContainer: Color(0xFF134E4A),
+        tertiary: Color(0xFF6D28D9),
         onTertiary: Color(0xFFFFFFFF),
-        tertiaryContainer: Color(0xFFF6E3DB),
-        onTertiaryContainer: Color(0xFF5A2A1A),
+        tertiaryContainer: Color(0xFFEDE9FE),
+        onTertiaryContainer: Color(0xFF4C1D95),
         error: Color(0xFFA0342A),
         onError: Color(0xFFFFFFFF),
         errorContainer: Color(0xFFFBE7E3),
         onErrorContainer: Color(0xFF5C1A12),
-        outline: Color(0xFF6E7A71),
-        outlineVariant: Color(0xFFE3E7E0),
-        inverseSurface: Color(0xFF2B3530),
+        outline: Color(0xFF64746B),
+        outlineVariant: Color(0xFFDDE7E1),
+        inverseSurface: Color(0xFF1F2B25),
         onInverseSurface: Color(0xFFF0F3EE),
-        inversePrimary: Color(0xFFA7D3B8),
+        inversePrimary: Color(0xFF6EE7B7),
         shadow: Color(0xFF000000),
         scrim: Color(0xFF000000),
         surfaceTint: t,
@@ -128,18 +140,18 @@ class SnehaTheme {
         surfaceContainerHighest: Color(0xFF24302A),
         onSurface: Color(0xFFEEF2EC),
         onSurfaceVariant: Color(0xFFB7C1B9),
-        primary: Color(0xFF8FC4A5),
-        onPrimary: Color(0xFF10201A),
-        primaryContainer: Color(0xFF24432F),
-        onPrimaryContainer: Color(0xFFCDE8D6),
-        secondary: Color(0xFFB5DCC4),
-        onSecondary: Color(0xFF10201A),
-        secondaryContainer: Color(0xFF2A3A31),
-        onSecondaryContainer: Color(0xFFDCE6DA),
-        tertiary: Color(0xFFE0A48E),
-        onTertiary: Color(0xFF2A120A),
-        tertiaryContainer: Color(0xFF4A2A1F),
-        onTertiaryContainer: Color(0xFFF6DCD1),
+        primary: Color(0xFF6EE7B7),
+        onPrimary: Color(0xFF052E22),
+        primaryContainer: Color(0xFF065F46),
+        onPrimaryContainer: Color(0xFFD1FAE5),
+        secondary: Color(0xFF5EEAD4),
+        onSecondary: Color(0xFF042F2E),
+        secondaryContainer: Color(0xFF134E4A),
+        onSecondaryContainer: Color(0xFFCCFBF1),
+        tertiary: Color(0xFFC4B5FD),
+        onTertiary: Color(0xFF2E1065),
+        tertiaryContainer: Color(0xFF4C1D95),
+        onTertiaryContainer: Color(0xFFEDE9FE),
         error: Color(0xFFF5ADA0),
         onError: Color(0xFF2A0A06),
         errorContainer: Color(0xFF3D1A16),
@@ -236,7 +248,15 @@ class SnehaTheme {
     return base.copyWith(
       scaffoldBackgroundColor: scheme.surface,
       textTheme: text,
-      extensions: [SnehaThemeFlags(highContrast: highContrast)],
+      extensions: [
+        SnehaThemeFlags(
+          highContrast: highContrast,
+          reduceMotion: reduceMotion,
+          brandGradient: highContrast ? null : _brandGradient(brightness),
+          softGradient: highContrast ? null : _softGradient(brightness),
+          restGradient: highContrast ? null : _restGradient(brightness),
+        ),
+      ],
       materialTapTargetSize: MaterialTapTargetSize.padded,
       visualDensity: VisualDensity.standard,
       pageTransitionsTheme: reduceMotion
@@ -409,15 +429,58 @@ class SnehaTheme {
   }
 }
 
-/// Flags the widgets need beyond the colour scheme.
+/// Main buttons: deep emerald → teal → violet (white text stays >= 4.5:1).
+LinearGradient _brandGradient(Brightness b) => LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: b == Brightness.light
+      ? const [Color(0xFF047857), Color(0xFF0F766E), Color(0xFF5B21B6)]
+      : const [Color(0xFF6EE7B7), Color(0xFF5EEAD4), Color(0xFFC4B5FD)],
+);
+
+/// The suggestion card: a soft wash behind dark (or, in dark mode, light) text.
+LinearGradient _softGradient(Brightness b) => LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: b == Brightness.light
+      ? const [Color(0xFFD1FAE5), Color(0xFFCCFBF1), Color(0xFFE0E7FF)]
+      : const [Color(0xFF065F46), Color(0xFF134E4A), Color(0xFF312E81)],
+);
+
+/// A rest suggestion: calm violet and rose.
+LinearGradient _restGradient(Brightness b) => LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: b == Brightness.light
+      ? const [Color(0xFFEDE9FE), Color(0xFFFCE7F3)]
+      : const [Color(0xFF4C1D95), Color(0xFF831843)],
+);
+
+/// Flags and decorations the widgets need beyond the colour scheme.
+/// Gradients are null in extra high contrast (solid colours only).
 class SnehaThemeFlags extends ThemeExtension<SnehaThemeFlags> {
-  const SnehaThemeFlags({required this.highContrast});
+  const SnehaThemeFlags({
+    required this.highContrast,
+    this.reduceMotion = false,
+    this.brandGradient,
+    this.softGradient,
+    this.restGradient,
+  });
 
   final bool highContrast;
+  final bool reduceMotion;
+  final Gradient? brandGradient;
+  final Gradient? softGradient;
+  final Gradient? restGradient;
 
   @override
-  SnehaThemeFlags copyWith({bool? highContrast}) =>
-      SnehaThemeFlags(highContrast: highContrast ?? this.highContrast);
+  SnehaThemeFlags copyWith({bool? highContrast}) => SnehaThemeFlags(
+    highContrast: highContrast ?? this.highContrast,
+    reduceMotion: reduceMotion,
+    brandGradient: brandGradient,
+    softGradient: softGradient,
+    restGradient: restGradient,
+  );
 
   @override
   SnehaThemeFlags lerp(SnehaThemeFlags? other, double t) =>

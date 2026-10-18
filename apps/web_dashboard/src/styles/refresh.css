@@ -1,0 +1,676 @@
+/*
+ * Premium visual theme for the caregiver dashboard (2026-10-18), on top of global.css.
+ * Bright colour, glass surfaces and motion; layout and behaviour are unchanged.
+ *
+ * Rules kept: white text only sits on dark enough colours (≥ 4.5:1), every colour has
+ * light, dark and extra-high-contrast values, and ALL animation stops with reduced motion
+ * (system setting or SNEHA's own "Reduce motion"). This theme is for caregivers only; the
+ * patient app keeps its calm design.
+ */
+
+/* ---------- Tokens ---------- */
+:root {
+  /* Brand: deep emerald → teal → indigo (all dark enough for white text). */
+  --gradient-brand: linear-gradient(120deg, #065F46 0%, #0F766E 45%, #4338CA 100%);
+  --gradient-brand-anim: linear-gradient(120deg, #065F46, #0F766E, #4338CA, #7E22CE, #0F766E, #065F46);
+  --gradient-title: linear-gradient(100deg, #047857 0%, #0E7490 45%, #6D28D9 100%);
+  --gradient-hero-text: #FFFFFF;
+  --gradient-hero-muted: rgb(255 255 255 / 85%);
+  --gradient-chart: linear-gradient(180deg, #34D399 0%, #0D9488 60%, #0F766E 100%);
+  --gradient-chart-alt: linear-gradient(180deg, #A78BFA 0%, #7C3AED 100%);
+  --accent-glow: #F472B6;
+
+  /* Colour-coded tiles: background wash, number colour, accent, glow. */
+  --tint-1-bg: linear-gradient(145deg, #D1FAE5 0%, #ECFDF5 70%); --tint-1-ink: #065F46; --tint-1-bar: #10B981; --tint-1-glow: rgb(16 185 129 / 35%);
+  --tint-2-bg: linear-gradient(145deg, #DBEAFE 0%, #EFF6FF 70%); --tint-2-ink: #1E40AF; --tint-2-bar: #3B82F6; --tint-2-glow: rgb(59 130 246 / 35%);
+  --tint-3-bg: linear-gradient(145deg, #FFE4E6 0%, #FFF1F2 70%); --tint-3-ink: #9F1239; --tint-3-bar: #F43F5E; --tint-3-glow: rgb(244 63 94 / 30%);
+  --tint-4-bg: linear-gradient(145deg, #EDE9FE 0%, #F5F3FF 70%); --tint-4-ink: #5B21B6; --tint-4-bar: #8B5CF6; --tint-4-glow: rgb(139 92 246 / 35%);
+  --tint-5-bg: linear-gradient(145deg, #FEF3C7 0%, #FFFBEB 70%); --tint-5-ink: #92400E; --tint-5-bar: #F59E0B; --tint-5-glow: rgb(245 158 11 / 35%);
+
+  /* Ambient background blobs. */
+  --blob-1: rgb(16 185 129 / 22%);
+  --blob-2: rgb(139 92 246 / 18%);
+  --blob-3: rgb(244 114 182 / 16%);
+  --glass: rgb(255 255 255 / 72%);
+  --glass-border: rgb(255 255 255 / 60%);
+
+  --shadow-card-rich: 0 1px 2px rgb(15 23 42 / 4%), 0 12px 32px rgb(15 23 42 / 8%);
+  --shadow-lift: 0 18px 40px rgb(15 23 42 / 14%);
+  --shadow-brand: 0 8px 24px rgb(15 118 110 / 35%);
+  --radius-xl: 22px;
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --gradient-brand: linear-gradient(120deg, #064E3B 0%, #115E59 45%, #3730A3 100%);
+    --gradient-brand-anim: linear-gradient(120deg, #064E3B, #115E59, #3730A3, #6B21A8, #115E59, #064E3B);
+    --gradient-title: linear-gradient(100deg, #6EE7B7 0%, #67E8F9 45%, #C4B5FD 100%);
+    --gradient-chart: linear-gradient(180deg, #6EE7B7 0%, #2DD4BF 100%);
+    --gradient-chart-alt: linear-gradient(180deg, #C4B5FD 0%, #A78BFA 100%);
+    --tint-1-bg: linear-gradient(145deg, #064E3B 0%, #0B2A22 75%); --tint-1-ink: #A7F3D0; --tint-1-bar: #34D399; --tint-1-glow: rgb(52 211 153 / 25%);
+    --tint-2-bg: linear-gradient(145deg, #1E3A8A 0%, #111C38 75%); --tint-2-ink: #BFDBFE; --tint-2-bar: #60A5FA; --tint-2-glow: rgb(96 165 250 / 25%);
+    --tint-3-bg: linear-gradient(145deg, #881337 0%, #2E0F19 75%); --tint-3-ink: #FECDD3; --tint-3-bar: #FB7185; --tint-3-glow: rgb(251 113 133 / 25%);
+    --tint-4-bg: linear-gradient(145deg, #4C1D95 0%, #1F1438 75%); --tint-4-ink: #DDD6FE; --tint-4-bar: #A78BFA; --tint-4-glow: rgb(167 139 250 / 25%);
+    --tint-5-bg: linear-gradient(145deg, #78350F 0%, #2A1A0A 75%); --tint-5-ink: #FDE68A; --tint-5-bar: #FBBF24; --tint-5-glow: rgb(251 191 36 / 22%);
+    --blob-1: rgb(16 185 129 / 14%);
+    --blob-2: rgb(139 92 246 / 14%);
+    --blob-3: rgb(244 114 182 / 10%);
+    --glass: rgb(27 36 31 / 70%);
+    --glass-border: rgb(255 255 255 / 8%);
+    --shadow-card-rich: 0 0 0 1px rgb(255 255 255 / 6%), 0 12px 32px rgb(0 0 0 / 35%);
+    --shadow-lift: 0 0 0 1px rgb(255 255 255 / 12%), 0 18px 40px rgb(0 0 0 / 45%);
+    --shadow-brand: 0 8px 24px rgb(45 212 191 / 22%);
+  }
+}
+:root[data-theme='dark'] {
+  --gradient-brand: linear-gradient(120deg, #064E3B 0%, #115E59 45%, #3730A3 100%);
+  --gradient-brand-anim: linear-gradient(120deg, #064E3B, #115E59, #3730A3, #6B21A8, #115E59, #064E3B);
+  --gradient-title: linear-gradient(100deg, #6EE7B7 0%, #67E8F9 45%, #C4B5FD 100%);
+  --gradient-chart: linear-gradient(180deg, #6EE7B7 0%, #2DD4BF 100%);
+  --gradient-chart-alt: linear-gradient(180deg, #C4B5FD 0%, #A78BFA 100%);
+  --tint-1-bg: linear-gradient(145deg, #064E3B 0%, #0B2A22 75%); --tint-1-ink: #A7F3D0; --tint-1-bar: #34D399; --tint-1-glow: rgb(52 211 153 / 25%);
+  --tint-2-bg: linear-gradient(145deg, #1E3A8A 0%, #111C38 75%); --tint-2-ink: #BFDBFE; --tint-2-bar: #60A5FA; --tint-2-glow: rgb(96 165 250 / 25%);
+  --tint-3-bg: linear-gradient(145deg, #881337 0%, #2E0F19 75%); --tint-3-ink: #FECDD3; --tint-3-bar: #FB7185; --tint-3-glow: rgb(251 113 133 / 25%);
+  --tint-4-bg: linear-gradient(145deg, #4C1D95 0%, #1F1438 75%); --tint-4-ink: #DDD6FE; --tint-4-bar: #A78BFA; --tint-4-glow: rgb(167 139 250 / 25%);
+  --tint-5-bg: linear-gradient(145deg, #78350F 0%, #2A1A0A 75%); --tint-5-ink: #FDE68A; --tint-5-bar: #FBBF24; --tint-5-glow: rgb(251 191 36 / 22%);
+  --blob-1: rgb(16 185 129 / 14%);
+  --blob-2: rgb(139 92 246 / 14%);
+  --blob-3: rgb(244 114 182 / 10%);
+  --glass: rgb(27 36 31 / 70%);
+  --glass-border: rgb(255 255 255 / 8%);
+  --shadow-card-rich: 0 0 0 1px rgb(255 255 255 / 6%), 0 12px 32px rgb(0 0 0 / 35%);
+  --shadow-lift: 0 0 0 1px rgb(255 255 255 / 12%), 0 18px 40px rgb(0 0 0 / 45%);
+  --shadow-brand: 0 8px 24px rgb(45 212 191 / 22%);
+}
+/* Extra high contrast: solid colours, black borders, no glow or glass. */
+:root[data-contrast='high'] {
+  --gradient-brand: #1B3A2C;
+  --gradient-brand-anim: #1B3A2C;
+  --gradient-title: none;
+  --gradient-chart: #1B3A2C;
+  --gradient-chart-alt: #3B2A6E;
+  --tint-1-bg: #FFFFFF; --tint-1-ink: #000000; --tint-1-bar: #1B3A2C; --tint-1-glow: transparent;
+  --tint-2-bg: #FFFFFF; --tint-2-ink: #000000; --tint-2-bar: #0B3F66; --tint-2-glow: transparent;
+  --tint-3-bg: #FFFFFF; --tint-3-ink: #000000; --tint-3-bar: #6E3220; --tint-3-glow: transparent;
+  --tint-4-bg: #FFFFFF; --tint-4-ink: #000000; --tint-4-bar: #3B2A6E; --tint-4-glow: transparent;
+  --tint-5-bg: #FFFFFF; --tint-5-ink: #000000; --tint-5-bar: #5A4000; --tint-5-glow: transparent;
+  --blob-1: transparent; --blob-2: transparent; --blob-3: transparent;
+  --glass: #FFFFFF;
+  --glass-border: #000000;
+  --shadow-card-rich: 0 0 0 2px #000;
+  --shadow-lift: 0 0 0 2px #000;
+  --shadow-brand: none;
+}
+
+/* ---------- Animations ---------- */
+@keyframes sneha-rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sneha-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sneha-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes sneha-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-6vw, 8vh) scale(1.15); }
+}
+@keyframes sneha-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  50% { transform: translate(8vw, -6vh) scale(0.95); }
+}
+@keyframes sneha-shine {
+  from { transform: translateX(-120%) skewX(-20deg); }
+  to { transform: translateX(220%) skewX(-20deg); }
+}
+@keyframes sneha-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes sneha-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ---------- Page and ambient background ---------- */
+/* The base colour stays on <html>; <body> is see-through so the blobs show. */
+body {
+  background: transparent;
+}
+/* Two soft colour blobs drift slowly behind everything. Decorative only. */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+body::before {
+  top: -20vmax;
+  right: -15vmax;
+  background: radial-gradient(circle, var(--blob-1), transparent 65%),
+    radial-gradient(circle at 30% 70%, var(--blob-3), transparent 60%);
+  animation: sneha-drift-1 26s ease-in-out infinite;
+}
+body::after {
+  bottom: -25vmax;
+  left: -15vmax;
+  background: radial-gradient(circle, var(--blob-2), transparent 65%);
+  animation: sneha-drift-2 32s ease-in-out infinite;
+}
+.app,
+.app-body,
+.app-main {
+  background: transparent;
+}
+
+/* ---------- Glass sidebar and top bar ---------- */
+.app-sidebar,
+.app-topbar {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  border-color: var(--glass-border);
+}
+.app-brand__mark {
+  background: var(--gradient-brand-anim);
+  background-size: 300% 300%;
+  color: var(--gradient-hero-text);
+  box-shadow: var(--shadow-brand);
+  animation: sneha-gradient 10s ease infinite;
+}
+.app-brand__name {
+  background: var(--gradient-title);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.app-nav a {
+  transition:
+    background-color var(--transition),
+    color var(--transition),
+    transform var(--motion-base) var(--ease-spring);
+}
+.app-nav a:hover {
+  transform: translateX(3px);
+}
+.app-nav a[aria-current='page'] {
+  background: var(--gradient-brand-anim);
+  background-size: 300% 300%;
+  animation: sneha-gradient 12s ease infinite;
+  color: var(--gradient-hero-text);
+  box-shadow: var(--shadow-brand);
+}
+.app-nav a[aria-current='page'] svg {
+  color: var(--gradient-hero-text);
+}
+.app-nav a[aria-current='page']::before {
+  display: none;
+}
+.app-user__avatar {
+  background: linear-gradient(135deg, #FDE68A, #F9A8D4);
+  color: #831843;
+  font-weight: 700;
+}
+
+/* ---------- Page titles: gradient text with an accent bar ---------- */
+.page-header h1 {
+  position: relative;
+  padding-bottom: var(--space-2);
+  background: var(--gradient-title);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sneha-rise 600ms var(--ease-spring) both;
+}
+:root[data-contrast='high'] .page-header h1,
+:root[data-contrast='high'] .app-brand__name {
+  background: none;
+  color: var(--color-text);
+}
+.page-header h1::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 3.5rem;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, #F472B6, #F59E0B);
+}
+.page-header__lede {
+  animation: sneha-fade 800ms 120ms ease both;
+}
+
+/* ---------- Cards: entrance and depth ---------- */
+.card {
+  border-radius: var(--radius-xl);
+  border-color: var(--glass-border);
+  box-shadow: var(--shadow-card-rich);
+  animation: sneha-rise 650ms var(--ease-spring) both;
+}
+.card:nth-of-type(2) { animation-delay: 80ms; }
+.card:nth-of-type(3) { animation-delay: 160ms; }
+.card:nth-of-type(4) { animation-delay: 240ms; }
+.card__title,
+.analytics-section__title {
+  letter-spacing: -0.015em;
+}
+
+/* ---------- Person banner: living gradient with a light sweep ---------- */
+.patient-header {
+  padding: var(--space-6) var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--gradient-brand-anim);
+  background-size: 300% 300%;
+  color: var(--gradient-hero-text);
+  box-shadow: var(--shadow-brand), var(--shadow-card-rich);
+  position: relative;
+  overflow: hidden;
+  animation:
+    sneha-gradient 14s ease infinite,
+    sneha-rise 650ms var(--ease-spring) both;
+}
+.patient-header::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 18%), transparent);
+  animation: sneha-shine 5s 1s ease-in-out infinite;
+  pointer-events: none;
+}
+.patient-header::after {
+  content: '';
+  position: absolute;
+  right: -3rem;
+  top: -5rem;
+  width: 15rem;
+  height: 15rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgb(244 114 182 / 45%), transparent 65%);
+  pointer-events: none;
+  animation: sneha-float 7s ease-in-out infinite;
+}
+:root[data-contrast='high'] .patient-header::before,
+:root[data-contrast='high'] .patient-header::after {
+  display: none;
+}
+.patient-header > * {
+  position: relative;
+  z-index: 1;
+}
+.patient-header .eyebrow,
+.patient-header__meta {
+  color: var(--gradient-hero-muted);
+}
+.patient-header__name {
+  color: var(--gradient-hero-text);
+}
+.patient-header__avatar {
+  background: linear-gradient(135deg, #FFFFFF, #FDE68A);
+  color: #065F46;
+  border: 3px solid rgb(255 255 255 / 55%);
+  box-shadow: 0 0 0 6px rgb(255 255 255 / 12%), 0 8px 20px rgb(0 0 0 / 20%);
+}
+:root[data-contrast='high'] .patient-header__avatar {
+  background: #FFFFFF;
+  color: #000000;
+  border-color: #FFFFFF;
+  box-shadow: none;
+}
+
+/* ---------- Number tiles: bright, colour-coded, glowing on hover ---------- */
+.metric {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  background: var(--tile-bg, var(--color-surface-muted));
+  border: 1px solid var(--glass-border);
+  animation: sneha-rise 600ms var(--ease-spring) both;
+  transition:
+    transform var(--motion-slow) var(--ease-spring),
+    box-shadow var(--motion-slow) var(--ease-spring);
+}
+.metric::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--tile-bar, var(--color-primary));
+}
+/* A soft coloured orb in the corner. */
+.metric::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -2.5rem;
+  top: -2.5rem;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--tile-glow, transparent), transparent 70%);
+  transition: transform var(--motion-slow) var(--ease-spring);
+}
+.metric:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px var(--tile-glow, rgb(0 0 0 / 10%));
+}
+.metric:hover::after {
+  transform: scale(1.35);
+}
+.metric .metric__value {
+  color: var(--tile-ink, var(--color-text));
+  font-size: calc(var(--text-metric) * 1.2);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+.metric .metric__label {
+  color: var(--tile-ink, var(--color-text-muted));
+  font-weight: 650;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+.metric .field__hint {
+  color: var(--tile-ink, var(--color-text-muted));
+  opacity: 0.85;
+}
+.metric a {
+  color: var(--tile-ink, var(--color-primary));
+  font-weight: 650;
+}
+:root[data-contrast='high'] .metric {
+  border: 2px solid #000;
+}
+:is(.person-summary__grid, .summary-grid) > .metric:nth-child(5n + 1) {
+  --tile-bg: var(--tint-1-bg); --tile-ink: var(--tint-1-ink); --tile-bar: var(--tint-1-bar); --tile-glow: var(--tint-1-glow);
+}
+:is(.person-summary__grid, .summary-grid) > .metric:nth-child(5n + 2) {
+  --tile-bg: var(--tint-2-bg); --tile-ink: var(--tint-2-ink); --tile-bar: var(--tint-2-bar); --tile-glow: var(--tint-2-glow);
+  animation-delay: 70ms;
+}
+:is(.person-summary__grid, .summary-grid) > .metric:nth-child(5n + 3) {
+  --tile-bg: var(--tint-3-bg); --tile-ink: var(--tint-3-ink); --tile-bar: var(--tint-3-bar); --tile-glow: var(--tint-3-glow);
+  animation-delay: 140ms;
+}
+:is(.person-summary__grid, .summary-grid) > .metric:nth-child(5n + 4) {
+  --tile-bg: var(--tint-4-bg); --tile-ink: var(--tint-4-ink); --tile-bar: var(--tint-4-bar); --tile-glow: var(--tint-4-glow);
+  animation-delay: 210ms;
+}
+:is(.person-summary__grid, .summary-grid) > .metric:nth-child(5n + 5) {
+  --tile-bg: var(--tint-5-bg); --tile-ink: var(--tint-5-ink); --tile-bar: var(--tint-5-bar); --tile-glow: var(--tint-5-glow);
+  animation-delay: 280ms;
+}
+
+/* ---------- Analytics sections ---------- */
+.analytics-section {
+  animation: sneha-rise 650ms var(--ease-spring) both;
+}
+.analytics-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.analytics-section__title::before {
+  content: '';
+  flex: none;
+  width: 0.55rem;
+  height: 1.35rem;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(180deg, #F472B6, #8B5CF6);
+}
+.analytics-subsection {
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--tint-2-bg);
+  border: 1px solid var(--glass-border);
+}
+.analytics-subsection .definition-list dd {
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  color: var(--tint-2-ink);
+}
+.analytics-subsection h4 {
+  color: var(--tint-2-ink);
+}
+
+/* ---------- Buttons: living gradient with a shine on hover ---------- */
+.button:not(.button--secondary, .button--ghost, .button--danger, .button--danger-outline) {
+  position: relative;
+  overflow: hidden;
+  background: var(--gradient-brand-anim);
+  background-size: 300% 300%;
+  border-color: transparent;
+  color: #FFFFFF;
+  box-shadow: var(--shadow-brand);
+  animation: sneha-gradient 10s ease infinite;
+}
+.button:not(.button--secondary, .button--ghost, .button--danger, .button--danger-outline)::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 35%), transparent);
+  transform: translateX(-120%) skewX(-20deg);
+  pointer-events: none;
+}
+.button:not(.button--secondary, .button--ghost, .button--danger, .button--danger-outline):not(:disabled):hover::after {
+  animation: sneha-shine 900ms ease;
+}
+.button {
+  border-radius: var(--radius-md);
+  transition:
+    transform var(--motion-base) var(--ease-spring),
+    box-shadow var(--motion-base) var(--ease-spring),
+    background-color var(--transition),
+    border-color var(--transition);
+}
+.button:not(:disabled):hover {
+  transform: translateY(-2px);
+}
+.button:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+.button--secondary:not(:disabled):hover {
+  border-color: #0F766E;
+  box-shadow: 0 6px 18px rgb(15 118 110 / 18%);
+}
+
+/* ---------- Tabs: gradient pill ---------- */
+.tabs__list {
+  border-radius: var(--radius-pill);
+  padding: var(--space-1);
+}
+.tabs__tab {
+  border-radius: var(--radius-pill);
+  transition: background-color var(--transition), color var(--transition), transform var(--motion-base) var(--ease-spring);
+}
+.tabs__tab:hover {
+  transform: translateY(-1px);
+}
+.tabs__tab[aria-selected='true'] {
+  background: var(--gradient-brand);
+  color: var(--gradient-hero-text);
+  box-shadow: var(--shadow-brand);
+}
+.tabs__tab[aria-selected='true']::after {
+  display: none;
+}
+
+/* ---------- Charts: bright bars that grow in ---------- */
+.chart {
+  border-radius: var(--radius-lg);
+  transition: box-shadow var(--motion-base) var(--ease);
+}
+.chart:hover {
+  box-shadow: var(--shadow-lift);
+}
+.chart__track {
+  border-radius: 10px 10px 0 0;
+}
+.chart__fill {
+  background: var(--gradient-chart);
+  border-radius: 10px 10px 0 0;
+  transform-origin: bottom;
+  animation: sneha-grow 900ms var(--ease-spring) both;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 35%);
+}
+.chart-grid > .chart:nth-child(2) .chart__fill {
+  background: var(--gradient-chart-alt);
+}
+.chart__bar:nth-child(2) .chart__fill { animation-delay: 40ms; }
+.chart__bar:nth-child(3) .chart__fill { animation-delay: 80ms; }
+.chart__bar:nth-child(4) .chart__fill { animation-delay: 120ms; }
+.chart__bar:nth-child(5) .chart__fill { animation-delay: 160ms; }
+.chart__bar:nth-child(6) .chart__fill { animation-delay: 200ms; }
+.chart__bar:nth-child(7) .chart__fill { animation-delay: 240ms; }
+.chart__bar:nth-child(n + 8) .chart__fill { animation-delay: 280ms; }
+.chart__fill--empty {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ---------- Notices and disclosures ---------- */
+.notice {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  animation: sneha-rise 500ms var(--ease-spring) both;
+}
+.disclosure {
+  border-radius: var(--radius-md);
+  transition: box-shadow var(--motion-base) var(--ease), transform var(--motion-base) var(--ease-spring);
+}
+.disclosure:hover {
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-1px);
+}
+
+/* ---------- Memory Bank ---------- */
+.memory-card {
+  border-radius: var(--radius-xl);
+  border-color: var(--glass-border);
+  box-shadow: var(--shadow-card-rich);
+  animation: sneha-rise 600ms var(--ease-spring) both;
+  transition: transform var(--motion-slow) var(--ease-spring), box-shadow var(--motion-slow) var(--ease-spring);
+}
+.memory-grid > li:nth-child(2) .memory-card { animation-delay: 60ms; }
+.memory-grid > li:nth-child(3) .memory-card { animation-delay: 120ms; }
+.memory-grid > li:nth-child(n + 4) .memory-card { animation-delay: 180ms; }
+.memory-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lift);
+}
+.memory-card .photo {
+  border-radius: var(--radius-lg);
+  transition: transform var(--motion-slow) var(--ease-spring);
+}
+.memory-card:hover .photo {
+  transform: scale(1.02);
+}
+
+/* ---------- Sign-in page ---------- */
+.landing__intro {
+  position: relative;
+  overflow: hidden;
+  padding: var(--space-10) var(--space-8);
+  border-radius: var(--radius-xl);
+  background: var(--gradient-brand-anim);
+  background-size: 300% 300%;
+  color: var(--gradient-hero-text);
+  box-shadow: var(--shadow-brand), var(--shadow-card-rich);
+  animation:
+    sneha-gradient 14s ease infinite,
+    sneha-rise 700ms var(--ease-spring) both;
+}
+.landing__intro::before,
+.landing__intro::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.landing__intro::before {
+  width: 18rem;
+  height: 18rem;
+  right: -6rem;
+  top: -6rem;
+  background: radial-gradient(circle at 35% 35%, rgb(244 114 182 / 45%), transparent 65%);
+  animation: sneha-float 8s ease-in-out infinite;
+}
+.landing__intro::after {
+  width: 11rem;
+  height: 11rem;
+  right: -3rem;
+  bottom: -5rem;
+  background: radial-gradient(circle at 40% 40%, rgb(251 191 36 / 40%), transparent 65%);
+  animation: sneha-float 10s 1s ease-in-out infinite;
+}
+:root[data-contrast='high'] .landing__intro::after,
+:root[data-contrast='high'] .landing__intro::before {
+  display: none;
+}
+.landing__intro > * {
+  position: relative;
+  z-index: 1;
+}
+.landing__intro .eyebrow {
+  color: var(--gradient-hero-muted);
+  letter-spacing: 0.14em;
+}
+.landing__intro h1 {
+  color: var(--gradient-hero-text);
+  font-size: clamp(1.75rem, 3vw, 2.4rem);
+}
+.landing__points li {
+  color: var(--gradient-hero-text);
+}
+.landing__points li::before {
+  border-color: #FDE68A;
+}
+.landing__form {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: var(--shadow-lift);
+  animation: sneha-rise 700ms 120ms var(--ease-spring) both;
+}
+
+/* ---------- Focus stays obvious on every bright surface ---------- */
+:is(.button, .tabs__tab, .app-nav a):focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+/* ---------- Reduced motion: everything still, nothing moves ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+  }
+  :is(.metric, .memory-card, .button, .tabs__tab, .app-nav a, .disclosure, .memory-card .photo):hover {
+    transform: none;
+  }
+}
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation: none !important;
+}
+:root[data-motion='reduced'] :is(.metric, .memory-card, .button, .tabs__tab, .app-nav a, .disclosure, .memory-card .photo):hover {
+  transform: none;
+}

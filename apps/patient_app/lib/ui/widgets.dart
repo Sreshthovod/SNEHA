@@ -22,6 +22,7 @@ class BigButton extends StatelessWidget {
     this.icon,
     this.secondary = false,
     this.danger = false,
+    this.accent,
   });
 
   final String label;
@@ -30,15 +31,21 @@ class BigButton extends StatelessWidget {
   final bool secondary;
   final bool danger;
 
+  /// Icon colour for a secondary button, so the main choices are easy to
+  /// tell apart (never colour alone: each has its own icon and words).
+  final Color? accent;
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final gradient = SnehaTheme.flags(theme).brandGradient;
     final child = icon == null
         ? Text(label, textAlign: TextAlign.center)
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 28),
+              Icon(icon, size: 28, color: secondary ? accent : null),
               const SizedBox(width: 12),
               Flexible(child: Text(label, textAlign: TextAlign.center)),
             ],
@@ -56,6 +63,29 @@ class BigButton extends StatelessWidget {
       );
     } else if (secondary) {
       button = OutlinedButton(onPressed: onPressed, child: child);
+    } else if (gradient != null && onPressed != null) {
+      // The main next step: a bright gradient with a soft glow.
+      button = DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.primary.withValues(alpha: 0.28),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+          ),
+          onPressed: onPressed,
+          child: child,
+        ),
+      );
     } else {
       button = FilledButton(onPressed: onPressed, child: child);
     }
@@ -74,6 +104,7 @@ class SnehaCard extends StatelessWidget {
     required this.child,
     this.icon,
     this.color,
+    this.gradient,
     this.padding = const EdgeInsets.all(20),
   });
 
@@ -83,6 +114,10 @@ class SnehaCard extends StatelessWidget {
 
   /// Background override (e.g. `primaryContainer` for the suggestion hero).
   final Color? color;
+
+  /// A soft gradient wash instead of [color] (ignored in high contrast,
+  /// where the theme provides no gradients and [color] is used).
+  final Gradient? gradient;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -90,33 +125,43 @@ class SnehaCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
-      color: color,
-      child: Padding(
-        padding: padding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (title != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, size: 28, color: theme.colorScheme.primary),
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      child: Semantics(
-                        header: true,
-                        child: Text(title!, style: theme.textTheme.titleLarge),
-                      ),
-                    ),
+      color: gradient == null ? color : Colors.transparent,
+      clipBehavior: gradient == null ? Clip.none : Clip.antiAlias,
+      shadowColor: theme.colorScheme.primary.withValues(alpha: 0.25),
+      elevation: gradient == null ? 0 : 4,
+      child: Ink(
+        decoration: gradient == null ? null : BoxDecoration(gradient: gradient),
+        child: _cardBody(theme),
+      ),
+    );
+  }
+
+  Widget _cardBody(ThemeData theme) {
+    return Padding(
+      padding: padding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (title != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 28, color: theme.colorScheme.primary),
+                    const SizedBox(width: 12),
                   ],
-                ),
+                  Expanded(
+                    child: Semantics(
+                      header: true,
+                      child: Text(title!, style: theme.textTheme.titleLarge),
+                    ),
+                  ),
+                ],
               ),
-            child,
-          ],
-        ),
+            ),
+          child,
+        ],
       ),
     );
   }
@@ -154,16 +199,71 @@ class PageBody extends StatelessWidget {
   final ScrollController? controller;
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-    child: SingleChildScrollView(
-      controller: controller,
-      padding: EdgeInsets.all(pagePadding(context)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
+  Widget build(BuildContext context) {
+    final still = SnehaTheme.reduceMotion(context);
+    return SafeArea(
+      child: SingleChildScrollView(
+        controller: controller,
+        padding: EdgeInsets.all(pagePadding(context)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < children.length; i++)
+              still ? children[i] : EntranceFade(index: i, child: children[i]),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+/// Content settles in once, softly, when a page opens: a short fade and a
+/// small lift, a little later for each item. It never repeats, never loops
+/// and is skipped entirely when less motion is wanted.
+class EntranceFade extends StatelessWidget {
+  const EntranceFade({super.key, required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final delay = (index.clamp(0, 6)) * 0.06;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 420 + (delay * 1000).round()),
+      curve: Interval(delay / (0.42 + delay), 1, curve: Curves.easeOutCubic),
+      child: child,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, 12 * (1 - t)),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Text painted with the brand gradient (solid colour in high contrast).
+class GradientText extends StatelessWidget {
+  const GradientText(this.text, {super.key, this.style});
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gradient = SnehaTheme.flags(theme).brandGradient;
+    final label = Text(text, style: style);
+    if (gradient == null) return label;
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: gradient.createShader,
+      child: label,
+    );
+  }
 }
 
 /// Loading state that always says what is happening. With reduced motion the

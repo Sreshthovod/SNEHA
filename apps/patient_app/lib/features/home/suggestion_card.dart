@@ -8,6 +8,7 @@ import '../../data/repositories/profile_repository.dart';
 import '../../l10n/strings.dart';
 import '../../personalization/engine.dart';
 import '../../personalization/recommendation_source.dart';
+import '../../ui/theme.dart';
 import '../../ui/widgets.dart';
 import '../activities/activity_launcher.dart';
 
@@ -221,8 +222,10 @@ class SuggestionCardState extends State<SuggestionCard> {
       ]);
     }
 
+    final flags = SnehaTheme.flags(theme);
     return SnehaCard(
       color: bg,
+      gradient: resting ? flags.restGradient : flags.softGradient,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: children,

@@ -1021,3 +1021,35 @@ Notes for implementers:
    Noto fallbacks) and on web (system stack).
 5. Every status (badge, notice, flag, chart gap, game feedback) is understandable in
    greyscale.
+
+## Premium visual theme for the dashboard (2026-10-18)
+
+`apps/web_dashboard/src/styles/refresh.css` (loaded after `global.css`) gives the caregiver
+dashboard a bright, animated look without changing layout or behaviour:
+
+- Brand gradient deep emerald → teal → indigo/violet, slowly shifting on the person banner,
+  sign-in panel, selected menu item, primary buttons and logo mark. White text only sits
+  on colours dark enough for at least 4.5:1.
+- Glass sidebar and top bar over two softly drifting colour blobs.
+- Gradient page titles with a pink-amber accent bar; gradient section markers.
+- Colour-coded number tiles (emerald, blue, rose, violet, amber) with a glowing corner orb,
+  uppercase labels, larger numbers and a coloured glow on hover.
+- Chart bars in emerald and violet gradients that grow in; cards, tiles and memory cards
+  rise in with a short stagger; a light sweep across the banner and buttons.
+
+Every colour has light, dark and extra-high-contrast values (high contrast: solid colours,
+black borders, no glow, glass or decorations). **All animation stops** with the system
+"reduce motion" setting or SNEHA's own setting. This theme is for caregivers only; the
+patient app keeps its calm design (no motion that competes for attention).
+
+### Patient app (same palette, calmer motion)
+
+`lib/ui/theme.dart` uses the same emerald (#047857), teal (#0F766E) and violet (#6D28D9)
+roles (dark: #6EE7B7, #5EEAD4, #C4B5FD) with bright containers. `SnehaThemeFlags` carries
+the brand, soft and rest gradients (none in extra high contrast) and the reduce-motion
+flag. The main next step (`BigButton`) is a gradient with a soft glow; the suggestion card
+is a pastel gradient (violet-rose when it suggests a rest); the home choices have
+colour-coded icons; "SNEHA" is gradient text. The only motion is `EntranceFade`: page
+content fades and lifts in **once** when a page opens, and not at all with reduced motion.
+Unlike the dashboard there is no looping, drifting or sweeping motion: the app is used by
+people with dementia, and activities keep their still, focused layout.

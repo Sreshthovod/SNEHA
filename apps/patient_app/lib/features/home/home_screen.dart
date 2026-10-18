@@ -93,11 +93,12 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Icon(Icons.spa_outlined, size: 24, color: scheme.primary),
               const SizedBox(width: 8),
-              Text(
+              GradientText(
                 s.t('app_name'),
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: scheme.secondary,
                   letterSpacing: 1.2,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -121,18 +122,21 @@ class _HomeScreenState extends State<HomeScreen> {
             label: s.t('home_play'),
             icon: Icons.extension_outlined,
             secondary: true,
+            accent: scheme.primary,
             onPressed: () => _open(ActivityListScreen(profile: profile)),
           ),
           BigButton(
             label: s.t('home_memories'),
             icon: Icons.photo_album_outlined,
             secondary: true,
+            accent: scheme.secondary,
             onPressed: () => _open(StoryTimeScreen(profile: profile)),
           ),
           BigButton(
             label: s.t('home_talk'),
             icon: Icons.chat_bubble_outline,
             secondary: true,
+            accent: scheme.tertiary,
             onPressed: () => _open(ConversationScreen(profile: profile)),
           ),
           const SizedBox(height: 12),
