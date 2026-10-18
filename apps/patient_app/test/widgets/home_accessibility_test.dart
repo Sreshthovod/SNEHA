@@ -27,7 +27,10 @@ void main() {
     await tester.pumpWidget(h.app());
     await settle(tester, rounds: 20);
     expect(find.text('Connected'), findsOneWidget);
-    expect(h.server.pushedMutations, hasLength(1));
+    // The session left open (no activity on screen) is closed as interrupted,
+    // then both records are shared.
+    expect(h.server.pushedMutations, hasLength(2));
+    expect(h.server.pushedMutations.last['data']['end_reason'], 'timeout');
     expect(await real(tester, h.outbox), isEmpty);
   });
 

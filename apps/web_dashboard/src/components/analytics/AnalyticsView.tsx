@@ -114,6 +114,15 @@ export function AnalyticsView({
         {analytics.disclaimer}
       </Notice>
       <CompletenessWarning completeness={c} />
+      {analytics.sync?.may_be_incomplete && (
+        <Notice tone="warning" title="These numbers may be incomplete">
+          {analytics.sync.reason ? `${analytics.sync.reason[0].toUpperCase()}${analytics.sync.reason.slice(1)}.` : ''}{' '}
+          {analytics.sync.last_phone_sync_at
+            ? `The phone last shared its records ${formatDateTime(analytics.sync.last_phone_sync_at, analytics.timezone)}.`
+            : 'The phone has not shared any records yet.'}{' '}
+          Activities done without internet appear after the phone syncs.
+        </Notice>
+      )}
 
       <section className="analytics-section" aria-labelledby="analytics-summary-heading">
         <h3 id="analytics-summary-heading" className="analytics-section__title">Summary</h3>
@@ -134,8 +143,14 @@ export function AnalyticsView({
             <Metric label="Hints per activity" value={num(t.hints_per_result)} hint={t.share_results_with_hints === null ? undefined : `${pct(t.share_results_with_hints)} of activities used a hint`} />
             <Metric label="Typical session length" value={t.median_session_minutes === null ? '—' : `${num(t.median_session_minutes)} min`} />
             <Metric label="Enjoyment answers" value={`${e.enjoyed} enjoyed`} hint={`${e.neutral} it was OK · ${e.not_enjoyed} not really · ${e.unanswered} not answered`} />
+            <Metric
+              label="Sessions not finished normally"
+              value={String((t.sessions_interrupted ?? 0) + (t.sessions_in_progress ?? 0))}
+              hint={`${t.sessions_interrupted ?? 0} interrupted (app closed) · ${t.sessions_in_progress ?? 0} not ended yet; never counted as completed or failed`}
+            />
           </div>
         </Disclosure>
+        <SupportSummary support={analytics.support ?? null} />
       </section>
 
       {hasDaily && (
@@ -200,6 +215,9 @@ export function AnalyticsView({
             <>
               <p className="field__hint">
                 Usual pattern: {formatDate(baseline.from_date)} – {formatDate(baseline.to_date)} ({baseline.results} activities over {baseline.days} days).
+                Only activities played in both periods are compared: {baseline.activities_compared?.join(', ')}.
+                {baseline.activities_not_compared && baseline.activities_not_compared.length > 0 &&
+                  ` Not compared (new this period): ${baseline.activities_not_compared.join(', ')}.`}
               </p>
               <Table
                 caption="This period compared with their usual pattern"
@@ -212,10 +230,24 @@ export function AnalyticsView({
                   { header: 'Difference', cell: (r) => formatChange(r.metric, r.change), numeric: true },
                 ]}
               />
+              {baseline.per_activity && baseline.per_activity.length > 0 && (
+                <Table
+                  caption="Each activity compared with itself"
+                  rowKey={(r) => r.activity_id}
+                  rows={baseline.per_activity}
+                  columns={[
+                    { header: 'Activity', cell: (r) => r.title },
+                    { header: 'Usual / now (activities)', cell: (r) => `${r.baseline_results} / ${r.period_results}`, numeric: true },
+                    { header: 'Answers correct', cell: (r) => `${pct(r.baseline_accuracy)} → ${pct(r.period_accuracy)}`, numeric: true },
+                    { header: 'Typical time', cell: (r) => `${seconds(r.baseline_median_response_ms)} → ${seconds(r.period_median_response_ms)}`, numeric: true },
+                    { header: 'Hints per activity', cell: (r) => `${num(r.baseline_hints_per_result)} → ${num(r.period_hints_per_result)}`, numeric: true },
+                  ]}
+                />
+              )}
             </>
           ) : (
             <p>
-              Not enough earlier activity to compare yet. A comparison needs at least {baseline.required_results} activities
+              {baseline.reason ? `No comparison: ${baseline.reason}. ` : 'Not enough earlier activity to compare yet. '}A comparison needs at least {baseline.required_results} activities
               over {baseline.required_days} days before this period; so far there are {baseline.results} over {baseline.days} days.
             </p>
           )}
@@ -244,5 +276,38 @@ export function AnalyticsView({
         </Disclosure>
       </section>
     </>
+  )
+}
+
+/** Support the app gave during activities, from the step-by-step record. Unknown is unknown. */
+function SupportSummary({ support }: { support: AnalyticsSummary['support'] | null }) {
+  if (!support) return null
+  const recorded = support.sessions_with_events > 0
+  const adj = support.adjustments ?? {}
+  return (
+    <section className="analytics-subsection" aria-labelledby="support-heading">
+      <h4 id="support-heading">Support given during activities</h4>
+      {!recorded ? (
+        <p className="field__hint">
+          No step-by-step record for these sessions (an older app version, or not shared yet). Nothing is assumed.
+        </p>
+      ) : (
+        <>
+          <p className="field__hint">
+            From the step-by-step record of {support.sessions_with_events} of {support.sessions_started} sessions. Support
+            shows how the app adapted; it is not a measure of the person.
+          </p>
+          <dl className="definition-list definition-list--compact">
+            <div><dt>Hints asked for</dt><dd>{support.hints_asked_for ?? 0}</dd></div>
+            <div><dt>Hints the app gave after wrong answers</dt><dd>{support.hints_given_automatically ?? 0}</dd></div>
+            <div><dt>Questions read aloud again on request</dt><dd>{support.read_aloud_presses ?? 0}</dd></div>
+            <div><dt>Pauses (by the person / phone left the screen)</dt><dd>{support.pauses_by_person ?? 0} / {support.pauses_screen_left ?? 0}</dd></div>
+            <div><dt>Rests offered and taken / declined</dt><dd>{support.rests_taken ?? 0} / {support.rests_declined ?? 0}</dd></div>
+            <div><dt>Activities shortened by the app</dt><dd>{adj.shorten ?? 0}</dd></div>
+            <div><dt>Stop requests</dt><dd>{support.stop_requests ?? 0}</dd></div>
+          </dl>
+        </>
+      )}
+    </section>
   )
 }

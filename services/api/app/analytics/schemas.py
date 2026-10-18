@@ -23,6 +23,12 @@ class Totals(BaseModel):
     sessions_completed: int
     sessions_stopped: int
     sessions_ended_for_fatigue: int
+    sessions_interrupted: int = Field(
+        default=0, description="Ended because the app was closed during an activity (timeout)."
+    )
+    sessions_in_progress: int = Field(
+        default=0, description="Not ended yet (or the phone has not shared the ending)."
+    )
     completion_rate: float | None
     interruption_rate: float | None
     accuracy_mean: float | None
@@ -93,6 +99,53 @@ class BaselineSummary(BaseModel):
     required_results: int
     required_days: int
     comparisons: list[BaselineComparison]
+    activities_compared: list[str] = Field(
+        default_factory=list, description="Activities played in both windows (like with like)."
+    )
+    activities_not_compared: list[str] = Field(
+        default_factory=list, description="Played in this period only: not compared."
+    )
+    per_activity: list["ActivityComparison"] = Field(default_factory=list)
+    reason: str | None = Field(default=None, description="Why no comparison was made.")
+
+
+class ActivityComparison(BaseModel):
+    activity_id: str
+    title: str
+    baseline_results: int
+    period_results: int
+    baseline_accuracy: float | None
+    period_accuracy: float | None
+    baseline_median_response_ms: float | None
+    period_median_response_ms: float | None
+    baseline_hints_per_result: float | None
+    period_hints_per_result: float | None
+
+
+class SupportSummary(BaseModel):
+    """Support given during activities, from activity events. Counts are present only when
+    at least one session in the period has a step-by-step record."""
+
+    sessions_with_events: int
+    sessions_started: int
+    hints_asked_for: int | None = None
+    hints_given_automatically: int | None = None
+    read_aloud_presses: int | None = None
+    pauses_by_person: int | None = None
+    pauses_screen_left: int | None = None
+    stop_requests: int | None = None
+    rests_taken: int | None = None
+    rests_declined: int | None = None
+    adjustments: dict[str, int] | None = None
+
+
+class SyncStatus(BaseModel):
+    """Whether everything the phone recorded for this period has probably reached the server."""
+
+    phone_paired: bool
+    last_phone_sync_at: datetime | None
+    may_be_incomplete: bool
+    reason: str | None
 
 
 class ReviewFlag(BaseModel):
@@ -138,6 +191,8 @@ class AnalyticsSummary(BaseModel):
     preferences: list[ActivityPreference]
     daily: list[DailyMetrics]
     baseline: BaselineSummary
+    support: SupportSummary | None = None
+    sync: SyncStatus | None = None
     review_flags: list[ReviewFlag]
     review_flags_withheld: bool = Field(
         default=False,

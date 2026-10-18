@@ -28,12 +28,14 @@ condition, and it never says that a person's cognition is declining.
 1. Fixed rules compute **review prompts** from stored data (an interpretation).
 2. A scan stores each prompt as a **review item** with a snapshot of its evidence
    (rule, numbers, explanation, period, method and settings versions, related notes).
-3. A **managing caregiver** confirms ("worth discussing with a clinician") or dismisses it,
+3. Any caregiver can add **context notes** (append-only, who and when) without deciding;
+   each item also keeps the records it was based on and the rules' limitations.
+4. A **managing caregiver** confirms ("worth discussing with a clinician") or dismisses it,
    always with a written reason. The decision is final and audited (who, when). Helpers can
    see items but cannot decide.
-4. **Clinicians see only confirmed items.** Their analytics response has
+5. **Clinicians see only confirmed items.** Their analytics response has
    `review_flags: []` and `review_flags_withheld: true`.
-5. The PDF separates **Part 1** (what was recorded), **Part 2** (automatic prompts, each
+6. The PDF separates **Part 1** (what was recorded), **Part 2** (automatic prompts, each
    with its review status) and **Part 3** (caregiver-confirmed concerns and dismissals,
    with reasons).
 
@@ -47,7 +49,7 @@ Tests: `test_review_items.py`, `test_reports.py` (three parts), dashboard
 | Activity events | Event type, order, round, time and typed values (`correct`, `latency_ms`, `action`, reason codes, level) | **No free text**: the schema forbids extra fields (422) |
 | Caregiver tiredness report from the phone | Level, time; stored as a fatigue observation with a fixed note | Who held the phone (only "a caregiver on the person's phone") |
 | Fatigue observations sent to the phone | ID, level, time, source | **The caregiver's note text never leaves the server** |
-| Review items | Rule outputs (numbers, explanation), decision, reason, decider | The reason is visible to clinicians once confirmed; write it with that in mind |
+| Review items | Rule outputs (numbers, explanation), evidence (result ids, missing days, limitations), context notes, decision, reason, decider | The reason and context notes are visible to clinicians once confirmed; write them with that in mind |
 
 All new tables cascade on patient erasure. Every new patient route is in the outsider sweep
 in `tests/test_authorization.py` (404, no change).
@@ -56,9 +58,10 @@ in `tests/test_authorization.py` (404, no change).
 
 - A caregiver's report on the phone cannot say *which* caregiver made it (the phone has one
   patient account).
-- A dashboard "very tired" note reaches a running activity only after the phone syncs.
-  Sync runs at app start, after activities and on demand; there is no push channel. The
-  on-phone caregiver button acts at once.
+- A dashboard "very tired" note reaches a running activity only after the phone syncs. During
+  an activity the phone syncs in the background at most once a minute while online; there is
+  no push channel. The dashboard shows whether each note has reached the phone. The on-phone
+  caregiver button acts at once.
 - Review decisions are final. There is no reopen; a mistaken decision is corrected by a new
   observation, and the next period's scan raises a new item if the pattern continues.
 - Open security findings O1–O5 from Stage 8 still apply.

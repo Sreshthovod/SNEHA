@@ -1,5 +1,6 @@
 import { apiRequest } from './client'
 import type {
+  FatigueDelivery,
   Observation,
   ObservationCorrection,
   ObservationCreate,
@@ -34,3 +35,6 @@ export const listRevisions = (pid: string, id: string, signal?: AbortSignal) =>
   apiRequest<ObservationRevision[]>(`${one(pid, id)}/revisions`, { signal })
 export const deleteObservation = (pid: string, id: string) =>
   apiRequest<void>(one(pid, id), { method: 'DELETE', responseType: 'none' })
+/** Whether each tiredness note has reached the patient's phone (honest sync status). */
+export const getFatigueDelivery = (pid: string, signal?: AbortSignal) =>
+  apiRequest<FatigueDelivery>(`/patients/${encodeURIComponent(pid)}/fatigue-delivery`, { signal })

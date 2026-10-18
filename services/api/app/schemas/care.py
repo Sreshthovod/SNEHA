@@ -1,7 +1,7 @@
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from app.models.enums import (
     FatigueLevel,
@@ -155,3 +155,25 @@ class FileOut(ResponseModel):
     size_bytes: int
     sha256: str
     created_at: datetime
+
+
+class DeviceSyncOut(BaseModel):
+    device_name: str | None
+    last_sync_at: datetime | None = Field(description="Last time the phone fetched changes.")
+
+
+class FatigueDeliveryItem(BaseModel):
+    observation_id: str
+    status: Literal["sent", "waiting", "no_phone", "from_phone"] = Field(
+        description="sent: the phone has fetched it; waiting: not yet (the phone applies it "
+        "at its next sync); no_phone: no phone is paired; from_phone: reported on the phone"
+    )
+    sent_at: datetime | None = None
+
+
+class FatigueDeliveryOut(BaseModel):
+    """Whether caregivers' tiredness notes have reached the patient's phone. Honest status
+    only: 'sent' means the phone fetched the change, not that an activity was running."""
+
+    devices: list[DeviceSyncOut]
+    items: list[FatigueDeliveryItem]

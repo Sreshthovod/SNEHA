@@ -204,3 +204,9 @@ class ReviewItem(IdMixin, TimestampMixin, Base):
     decided_by_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     decision_reason: Mapped[str | None] = mapped_column(String(1000))
+    # Migration 0015. The records behind the prompt (activity result ids, days without data,
+    # checks that could not be made), snapshotted with the numbers.
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    # Caregivers' context, append-only: [{"by": user_id, "at": iso, "note": text}]. Adding
+    # context never changes the decision or the evidence.
+    context_notes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)

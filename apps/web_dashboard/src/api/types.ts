@@ -50,6 +50,8 @@ export type ObservationReview = S<'ObservationReview'>
 export type ObservationResolve = S<'ObservationResolve'>
 export type ObservationRevision = S<'ObservationRevisionOut'>
 export type FatigueLevel = S<'FatigueLevel'>
+export type FatigueDelivery = S<'FatigueDeliveryOut'>
+export type FatigueDeliveryItem = S<'FatigueDeliveryItem'>
 
 export type ReviewItem = S<'ReviewItemOut'>
 export type ReviewItemStatus = S<'ReviewItemStatus'>

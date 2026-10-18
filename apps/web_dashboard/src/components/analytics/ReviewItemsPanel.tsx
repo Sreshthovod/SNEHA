@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { decideReviewItem } from '../../api/review'
+import { addReviewContext, decideReviewItem } from '../../api/review'
 import type { ReviewItem } from '../../api/types'
 import { useAction } from '../../hooks/useAsync'
 import { describeFlagNumbers } from '../../lib/analytics'
@@ -108,6 +108,17 @@ function ReviewItemCard({ item, onChanged, compact = false, children }: {
           Decided {formatDateTime(item.decided_at, patient.timezone)}: {item.decision_reason}
         </p>
       )}
+      <EvidenceLine item={item} />
+      {(item.context_notes ?? []).length > 0 && (
+        <ul className="plain-list review-context">
+          {(item.context_notes ?? []).map((n) => (
+            <li key={`${n.by}-${n.at}`} className="field__hint">
+              Context added {formatDateTime(n.at, patient.timezone)}: {n.note}
+            </li>
+          ))}
+        </ul>
+      )}
+      {!isClinician && <AddContext item={item} onChanged={onChanged} />}
       {!isClinician && awaiting && (
         <div className="observation-actions">
           {isManager ? (
@@ -223,5 +234,81 @@ export function ReviewItemsPanel({ items, canScan }: ReviewItemsState) {
       )}
       {!isClinician && !canScan && <Notice tone="info">Choose 3 to 31 days to check for new review prompts.</Notice>}
     </section>
+  )
+}
+
+/** The stored records the prompt is based on, and what could not be checked. */
+function EvidenceLine({ item }: { item: ReviewItem }) {
+  const raw = item.evidence
+  if (!raw || !raw.results_considered) return null
+  const ev = {
+    results_considered: raw.results_considered,
+    activities: raw.activities ?? [],
+    missing_days: raw.missing_days ?? [],
+    limitations: raw.limitations ?? [],
+  }
+  return (
+    <details className="details">
+      <summary>What this is based on</summary>
+      <p className="field__hint">
+        {ev.results_considered} recorded {ev.results_considered === 1 ? 'activity' : 'activities'}
+        {ev.activities.length > 0 && ` (${ev.activities.join(', ')})`}.
+        {ev.missing_days.length > 0 && ` No activity on ${ev.missing_days.length} ${ev.missing_days.length === 1 ? 'day' : 'days'}; missing days are not counted as low results.`}
+      </p>
+      {ev.limitations.length > 0 && (
+        <ul className="field__hint">
+          {ev.limitations.map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+        </ul>
+      )}
+    </details>
+  )
+}
+
+/** Any caregiver can add context; it is kept and never changes the decision. */
+function AddContext({ item, onChanged }: { item: ReviewItem; onChanged: () => void }) {
+  const { patient } = usePatient()
+  const [open, setOpen] = useState(false)
+  const [note, setNote] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const save = useAction(() => addReviewContext(patient.id, item.id, note.trim()))
+  if (!open)
+    return (
+      <Button variant="ghost" onClick={() => setOpen(true)} aria-label={`Add context: ${item.title}`}>
+        Add context
+      </Button>
+    )
+  return (
+    <div className="review-context-form">
+      <TextArea
+        label="Context"
+        hint="Something you know that helps explain this, e.g. a visit, an illness, a new phone. It is kept and does not decide anything."
+        value={note}
+        maxLength={1000}
+        onChange={(e) => setNote(e.target.value)}
+        error={error ?? undefined}
+      />
+      <div className="form-actions">
+        <Button
+          pending={save.pending}
+          onClick={async () => {
+            if (note.trim().length < 3) {
+              setError('Please write a few words.')
+              return
+            }
+            if (await save.run()) {
+              setOpen(false)
+              setNote('')
+              onChanged()
+            }
+          }}
+        >
+          Save context
+        </Button>
+        <Button variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
+      </div>
+      <ActionError error={save.error} />
+    </div>
   )
 }

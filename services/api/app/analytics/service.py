@@ -4,15 +4,23 @@ from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.analytics import compute
 from app.analytics.config import AnalyticsConfig, get_analytics_config
 from app.analytics.schemas import AnalyticsSummary
-from app.models.activities import ActivityDefinition, ActivityResult, ActivitySession
+from app.models.activities import (
+    ActivityDefinition,
+    ActivityEvent,
+    ActivityResult,
+    ActivitySession,
+)
 from app.models.care import CaregiverObservation
+from app.models.enums import AuthSessionKind
 from app.models.patients import PatientProfile
+from app.models.sync import SyncMutation
+from app.models.users import AuthSession
 from app.services.history import day_bounds
 
 MAX_ANALYTICS_DAYS = 366
@@ -88,6 +96,73 @@ def _sessions(
         ],
         columns=compute.SESSION_COLUMNS,
     )
+
+
+def _events(db: Session, session_ids: list[str]) -> pd.DataFrame:
+    columns = ["id", "session_id", "event_type", "source", "action"]
+    if not session_ids:
+        return pd.DataFrame({c: pd.Series(dtype="object") for c in columns})
+    rows = db.scalars(select(ActivityEvent).where(ActivityEvent.session_id.in_(session_ids))).all()
+    return pd.DataFrame.from_records(
+        [
+            {
+                "id": e.id,
+                "session_id": e.session_id,
+                "event_type": e.event_type.value,
+                "source": (e.data or {}).get("source"),
+                "action": (e.data or {}).get("action"),
+            }
+            for e in rows
+        ],
+        columns=columns,
+    )
+
+
+def sync_status(db: Session, patient: PatientProfile, upper: datetime, now: datetime) -> dict:
+    """'May be incomplete' when a paired phone has not synced since the period ended (it may
+    still hold activities recorded offline), or the period is still running."""
+    phones = list(
+        db.scalars(
+            select(AuthSession).where(
+                AuthSession.user_id == patient.user_id,
+                AuthSession.kind == AuthSessionKind.DEVICE,
+                AuthSession.revoked_at.is_(None),
+            )
+        )
+    )
+    pushed = db.scalar(
+        select(func.max(SyncMutation.received_at)).where(SyncMutation.patient_id == patient.id)
+    )
+    pulled = max((p.last_pull_at for p in phones if p.last_pull_at), default=None)
+    last = max((t for t in (pushed, pulled) if t is not None), default=None)
+    if not phones:
+        return {
+            "phone_paired": False,
+            "last_phone_sync_at": last,
+            "may_be_incomplete": False,
+            "reason": None,
+        }
+    if upper > now:
+        return {
+            "phone_paired": True,
+            "last_phone_sync_at": last,
+            "may_be_incomplete": True,
+            "reason": "the period has not ended yet",
+        }
+    if last is None or last < upper:
+        return {
+            "phone_paired": True,
+            "last_phone_sync_at": last,
+            "may_be_incomplete": True,
+            "reason": "the phone has not shared its records since the end of this period; "
+            "activities done offline may be missing",
+        }
+    return {
+        "phone_paired": True,
+        "last_phone_sync_at": last,
+        "may_be_incomplete": False,
+        "reason": None,
+    }
 
 
 def observations_in(
@@ -179,6 +254,10 @@ def summarise(
         activities=activities,
         preferences=compute.preferences(activities),
         daily=compute.daily(results, days),
+        support=compute.support_summary(
+            _events(db, list(sessions["id"]) if len(sessions) else []), sessions
+        ),
+        sync=sync_status(db, patient, upper, now),
         baseline={
             "status": base.status,
             "from_date": base.from_date,
@@ -188,6 +267,10 @@ def summarise(
             "required_results": base.required_results,
             "required_days": base.required_days,
             "comparisons": base.comparisons,
+            "activities_compared": base.activities_compared,
+            "activities_not_compared": base.activities_not_compared,
+            "per_activity": base.per_activity,
+            "reason": base.reason,
         },
         review_flags=[f.__dict__ for f in flags],
         rules_not_evaluated=[s.__dict__ for s in skipped],

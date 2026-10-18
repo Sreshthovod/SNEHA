@@ -11,7 +11,7 @@ from app.models.care import ReviewItem
 from app.models.enums import ReviewItemStatus
 from app.review import service
 from app.schemas.common import ErrorResponse
-from app.schemas.review import ReviewDecision, ReviewItemOut, ReviewScanRequest
+from app.schemas.review import ReviewContext, ReviewDecision, ReviewItemOut, ReviewScanRequest
 from app.services.access import PatientAccess, Permission
 
 router = APIRouter(prefix="/patients/{patient_id}/review-items", tags=["review"])
@@ -73,5 +73,22 @@ def decide_review_item(
     if item is None or item.patient_id != access.patient.id:
         raise not_found("Review item")
     service.decide(db, item, ReviewItemStatus(body.decision), body.reason, actor_id=principal.id)
+    db.commit()
+    return item
+
+
+@router.post("/{item_id}/context", response_model=ReviewItemOut, responses=_ERRORS)
+def add_review_context(
+    item_id: str,
+    body: ReviewContext,
+    principal: PrincipalDep,
+    db: DbSessionDep,
+    access: PatientAccess = patient_access(Permission.SCAN_REVIEW_ITEMS),
+) -> ReviewItem:
+    """Add context (any caregiver of this person). The decision and evidence are unchanged."""
+    item = db.get(ReviewItem, item_id)
+    if item is None or item.patient_id != access.patient.id:
+        raise not_found("Review item")
+    service.add_context(db, item, body.note, actor_id=principal.id)
     db.commit()
     return item

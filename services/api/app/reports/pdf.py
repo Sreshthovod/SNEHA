@@ -59,6 +59,8 @@ class ReviewItemLine:
     status: str  # awaiting_review | confirmed | dismissed
     decided_at: datetime | None = None
     decision_reason: str | None = None
+    results_considered: int | None = None
+    context_notes: tuple[tuple[datetime, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -233,6 +235,12 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
             f"({days_total} days, {s.timezone})"
         ),
         p(
+            "Both dates are included: the period runs from the start of the first day to the "
+            f"end of the last day in {s.timezone}. Activities are counted on the day they "
+            "finished; sessions on the day they started.",
+            small,
+        ),
+        p(
             f"Generated {data.generated_at.astimezone(tz):%d %b %Y %H:%M} ({s.timezone}) · "
             f"Report {data.report_id} · Method {s.method_version}, settings {s.config_version}",
             small,
@@ -289,10 +297,29 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
         )
     if s.baseline.status != "compared":
         warnings.append(
-            "Not enough earlier activity to compare with this person's usual pattern "
-            f"(needs {s.baseline.required_results} results on {s.baseline.required_days} days in "
-            f"the {(s.baseline.to_date - s.baseline.from_date).days + 1} days before; found "
+            "No comparison with this person's usual pattern"
+            + (f": {s.baseline.reason}" if s.baseline.reason else "")
+            + f" (needs {s.baseline.required_results} results on {s.baseline.required_days} "
+            f"days of the same activities in the "
+            f"{(s.baseline.to_date - s.baseline.from_date).days + 1} days before; found "
             f"{s.baseline.results} on {s.baseline.days})."
+        )
+    if s.sync and s.sync.may_be_incomplete:
+        last = (
+            f"{s.sync.last_phone_sync_at.astimezone(tz):%d %b %Y %H:%M}"
+            if s.sync.last_phone_sync_at
+            else "never"
+        )
+        warnings.append(
+            f"This report may be incomplete: {s.sync.reason} (last shared: {last}). "
+            "Activities recorded on the phone without internet appear once it syncs."
+        )
+    t0 = s.totals
+    if t0.sessions_in_progress or t0.sessions_interrupted:
+        warnings.append(
+            f"Sessions not finished normally: {t0.sessions_interrupted} interrupted (the app was "
+            f"closed during an activity), {t0.sessions_in_progress} not ended yet. They are "
+            "counted separately, never as completed or failed."
         )
     if warnings:
         story.append(notice(["Missing-data warnings:"] + [f"• {w}" for w in warnings]))
@@ -415,7 +442,17 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
             p(
                 f"Usual pattern = {s.baseline.results} activities between "
                 f"{_day(s.baseline.from_date)} "
-                f"and {_day(s.baseline.to_date)}.",
+                f"and {_day(s.baseline.to_date)}. Only activities played in both periods are "
+                "compared (like with like): "
+                + ", ".join(s.baseline.activities_compared)
+                + "."
+                + (
+                    " Not compared (played in this period only): "
+                    + ", ".join(s.baseline.activities_not_compared)
+                    + "."
+                    if s.baseline.activities_not_compared
+                    else ""
+                ),
                 small,
             )
         )
@@ -441,9 +478,71 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
                 [80 * mm, 45 * mm, 45 * mm],
             )
         )
+        if s.baseline.per_activity:
+            story.append(
+                table(
+                    [["Activity", "Activities (usual / now)", "Score", "Response", "Hints"]]
+                    + [
+                        [
+                            a.title,
+                            f"{a.baseline_results} / {a.period_results}",
+                            f"{_num(a.baseline_accuracy)} → {_num(a.period_accuracy)}",
+                            f"{_secs(a.baseline_median_response_ms)} → "
+                            f"{_secs(a.period_median_response_ms)}",
+                            f"{_num(a.baseline_hints_per_result, 1)} → "
+                            f"{_num(a.period_hints_per_result, 1)}",
+                        ]
+                        for a in s.baseline.per_activity
+                    ],
+                    [50 * mm, 32 * mm, 28 * mm, 34 * mm, 26 * mm],
+                )
+            )
     else:
         story.append(
-            p("No comparison was made because there is not enough earlier activity (see above).")
+            p("No comparison was made" + (f": {s.baseline.reason}." if s.baseline.reason else "."))
+        )
+
+    # Support given during activities (activity events)
+    story.append(p("Support given during activities", h2))
+    sup = s.support
+    if sup is None or not sup.sessions_with_events:
+        story.append(
+            p(
+                "No step-by-step record for the sessions in this period (recorded by an older "
+                "app version, or not shared yet). Nothing is assumed."
+            )
+        )
+    else:
+        adj = sup.adjustments or {}
+        story.append(
+            table(
+                [
+                    ["What happened", "Count"],
+                    ["Hints the person asked for", str(sup.hints_asked_for or 0)],
+                    [
+                        "Hints the app gave after wrong answers",
+                        str(sup.hints_given_automatically or 0),
+                    ],
+                    ["Questions read aloud again on request", str(sup.read_aloud_presses or 0)],
+                    ["Pauses by the person", str(sup.pauses_by_person or 0)],
+                    ["Pauses because the phone left the screen", str(sup.pauses_screen_left or 0)],
+                    [
+                        "Rests offered and taken / declined",
+                        f"{sup.rests_taken or 0} / {sup.rests_declined or 0}",
+                    ],
+                    ["Activities shortened by the app", str(adj.get("shorten", 0))],
+                    ["Stop requests", str(sup.stop_requests or 0)],
+                ],
+                [120 * mm, 50 * mm],
+            )
+        )
+        story.append(
+            p(
+                f"From the step-by-step record of {sup.sessions_with_events} of "
+                f"{sup.sessions_started} sessions. Support is a sign the app adapted, not a "
+                "measure of the person.",
+                small,
+            )
         )
 
     # Tiredness reports
@@ -580,6 +679,15 @@ def build_pdf(data: ReportInput, *, font_path: Path | None = None, compress: boo
             p(f"{i.title} ({i.rule_id})", ParagraphStyle("ct", parent=body, fontName=bold)),
             p(i.explanation),
             p(f"Caregiver's reason ({when}): {i.decision_reason or '–'}", small),
+            *(
+                [p(f"Based on {i.results_considered} recorded activities.", small)]
+                if i.results_considered is not None
+                else []
+            ),
+            *[
+                p(f"Caregiver context ({at.astimezone(tz):%d %b %Y}): {note}", small)
+                for at, note in i.context_notes
+            ],
         ]
 
     if confirmed:

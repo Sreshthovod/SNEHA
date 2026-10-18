@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app.api.deps import DbSessionDep, PrincipalDep, require_roles
 from app.core.errors import AppError
+from app.core.time import utc_now
 from app.models.enums import AuditOutcome, SyncMutationStatus, UserRole
 from app.models.patients import PatientProfile
 from app.schemas.common import ErrorResponse
@@ -80,4 +81,9 @@ def pull(
     patient_id = _device_patient_id(db, principal)
     authorize(db, principal.user, patient_id, Permission.VIEW_MEMORIES, request=request)
     changes, next_since, has_more = sync.pull(db, patient_id=patient_id, since=since, limit=limit)
+    # Remember how far this device has been sent the change log (fatigue-note delivery).
+    device = principal.session
+    device.last_pull_seq = max(device.last_pull_seq or 0, next_since)
+    device.last_pull_at = utc_now()
+    db.commit()
     return SyncPullResponse(changes=changes, next_since=next_since, has_more=has_more)

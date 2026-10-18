@@ -120,6 +120,7 @@ def endpoints(w) -> list[tuple[str, str, dict | None]]:
         ("POST", f"{base}/sessions/{w['session_id']}/results", "RESULT"),
         ("GET", f"{base}/history?from=2026-10-01&to=2026-10-09", None),
         ("GET", f"{base}/observations", None),
+        ("GET", f"{base}/fatigue-delivery", None),
         (
             "POST",
             f"{base}/observations",

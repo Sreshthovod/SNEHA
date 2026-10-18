@@ -390,6 +390,8 @@ class AppStrings {
         'Thank you. Activities will be easier for a while.',
     'caregiver_reported_severe':
         'Thank you. The next suggestion will be a rest.',
+    'caregiver_saved_offline':
+        'Saved on this phone. It will be shared with the family dashboard when the phone is online.',
     'result_tired_title': "Let's take a rest",
     'result_tired_body': 'Thank you for telling us. Resting is a good idea.',
     'result_rest': 'Rest now',

@@ -244,12 +244,18 @@ class ActivityRecorder {
   }
 
   /// [endReason]: completed | user_stopped | fatigue_detected | timeout.
+  ///
+  /// Ending is once only: if the session has already ended (a double tap, a
+  /// retry, a stop that raced a completion), nothing is written or queued, so
+  /// the first ending, e.g. a stop, always stands.
+  /// [endedAt] defaults to now.
   Future<void> finishSession(
     String patientId,
     String sessionId, {
     required String endReason,
+    DateTime? endedAt,
   }) async {
-    final endedAt = _clock();
+    endedAt ??= _clock();
     final status = endReason == 'completed' ? 'completed' : 'abandoned';
     await _local.db.transaction((txn) async {
       final rows = await txn.query(
@@ -258,10 +264,11 @@ class ActivityRecorder {
         whereArgs: [sessionId],
       );
       if (rows.isEmpty) throw StateError('Unknown session $sessionId');
+      if (rows.first['ended_at'] != null) return;
       await txn.update(
         'sessions',
         {
-          'ended_at': isoUtc(endedAt),
+          'ended_at': isoUtc(endedAt!),
           'status': status,
           'end_reason': endReason,
         },
@@ -366,6 +373,36 @@ class ActivityRecorder {
       );
     });
     return id;
+  }
+
+  /// Sessions this phone left running (the app was closed or killed during an
+  /// activity) are ended as `timeout`, i.e. interrupted, at the time of their
+  /// last recorded step, never "now", so durations stay honest. Call only when
+  /// no activity is open (at app start). Returns how many were closed.
+  Future<int> closeInterruptedSessions(String patientId) async {
+    final open = await _local.db.query(
+      'sessions',
+      where: 'patient_id = ? AND ended_at IS NULL',
+      whereArgs: [patientId],
+    );
+    for (final row in open) {
+      final id = row['id'] as String;
+      final last = await _local.db.rawQuery(
+        '''SELECT MAX(t) AS t FROM (
+             SELECT MAX(occurred_at) AS t FROM activity_events WHERE session_id = ?
+             UNION ALL
+             SELECT MAX(completed_at) AS t FROM results WHERE session_id = ?)''',
+        [id, id],
+      );
+      final at = last.first['t'] as String? ?? row['started_at'] as String;
+      await finishSession(
+        patientId,
+        id,
+        endReason: 'timeout',
+        endedAt: DateTime.parse(at).toUtc(),
+      );
+    }
+    return open.length;
   }
 
   Future<void> recordConversation(

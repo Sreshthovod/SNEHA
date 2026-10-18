@@ -39,8 +39,14 @@ METHODOLOGY = [
     "Hints: hints used per activity, and the share of activities with at least one hint.",
     "Session duration: median minutes from session start to end, for ended sessions.",
     "Engagement: answers to 'Did you enjoy this?'. Unanswered is not treated as negative.",
-    "Baseline: the same person's results in the window just before the period. A comparison "
-    "is only made when the baseline and the period both meet minimum amounts of data.",
+    "Baseline: the same person's results in the window just before the period, for the "
+    "activities played in BOTH windows only (like with like: a different mix of games is not "
+    "a change). A comparison is only made when both meet minimum amounts of data.",
+    "Sessions still open (not ended) and interrupted sessions (the app was closed during an "
+    "activity) are counted separately and never as completed or failed.",
+    "Step-by-step counts (hints asked for or given automatically, pauses, stops, rests, "
+    "adjustments) come from activity events, only for sessions that have them; older sessions "
+    "are 'not recorded', never zero.",
     "Review prompts require a large enough overall change AND the change on most days with "
     "data, so a single session or day can never raise one.",
 ]
@@ -143,6 +149,8 @@ def totals(results: pd.DataFrame, sessions: pd.DataFrame) -> dict[str, Any]:
         "sessions_completed": completed,
         "sessions_stopped": stopped,
         "sessions_ended_for_fatigue": int((ended["end_reason"] == "fatigue_detected").sum()),
+        "sessions_interrupted": int((ended["end_reason"] == "timeout").sum()),
+        "sessions_in_progress": int(sessions["ended_at"].isna().sum()) if len(sessions) else 0,
         "completion_rate": _rate(completed, len(ended)),
         "interruption_rate": _rate(interrupted, n),
         "accuracy_mean": _float(_num(scored["score"]).mean()) if len(scored) else None,
@@ -267,6 +275,12 @@ class Baseline:
     metrics: dict[str, Any] = field(default_factory=dict)
     comparisons: list[dict[str, Any]] = field(default_factory=list)
     period_sufficient: bool = False
+    # Like with like: only activities played in both windows are compared.
+    activities_compared: list[str] = field(default_factory=list)
+    activities_not_compared: list[str] = field(default_factory=list)
+    per_activity: list[dict[str, Any]] = field(default_factory=list)
+    reason: str | None = None
+    period_comparable: pd.DataFrame | None = None
 
 
 def baseline(
@@ -276,6 +290,19 @@ def baseline(
     baseline_to: date,
     cfg: AnalyticsConfig,
 ) -> Baseline:
+    period_all = period_results
+    baseline_all = baseline_results
+    common = (
+        set(period_results["activity_id"]) & set(baseline_results["activity_id"])
+        if len(period_results) and len(baseline_results)
+        else set()
+    )
+    titles = {}
+    for frame in (period_results, baseline_results):
+        if len(frame):
+            titles.update(dict(zip(frame["activity_id"], frame["title"], strict=False)))
+    baseline_results = baseline_results[baseline_results["activity_id"].isin(common)]
+    period_results = period_results[period_results["activity_id"].isin(common)]
     days = int(baseline_results["day"].nunique()) if len(baseline_results) else 0
     period_days = int(period_results["day"].nunique()) if len(period_results) else 0
     period_ok = len(period_results) >= cfg.period.min_results and period_days >= cfg.period.min_days
@@ -289,7 +316,23 @@ def baseline(
         required_results=cfg.baseline.min_results,
         required_days=cfg.baseline.min_days,
         period_sufficient=period_ok,
+        activities_compared=sorted(titles[a] for a in common),
+        activities_not_compared=sorted(
+            {titles[a] for a in set(period_all["activity_id"]) - common}
+            if len(period_all)
+            else set()
+        ),
+        period_comparable=period_results,
     )
+    had_baseline = bool(len(baseline_all)) if baseline_all is not None else False
+    if not had_baseline:
+        result.reason = "not enough earlier activity to know what is usual for this person"
+    elif not common:
+        result.reason = "no activity was played both in this period and in the weeks before"
+    elif not period_ok:
+        result.reason = "not enough activity in this period"
+    elif not enough:
+        result.reason = "not enough earlier activity to know what is usual for this person"
     if result.status != "compared":
         return result
     empty_sessions = empty(SESSION_COLUMNS)
@@ -311,6 +354,24 @@ def baseline(
                 "baseline": b,
                 "current": c,
                 "change": _float(c - b) if b is not None and c is not None else None,
+            }
+        )
+    for activity_id in sorted(common, key=lambda a: titles[a]):
+        b_rows = baseline_results[baseline_results["activity_id"] == activity_id]
+        p_rows = period_results[period_results["activity_id"] == activity_id]
+        bt, pt = totals(b_rows, empty_sessions), totals(p_rows, empty_sessions)
+        result.per_activity.append(
+            {
+                "activity_id": activity_id,
+                "title": titles[activity_id],
+                "baseline_results": len(b_rows),
+                "period_results": len(p_rows),
+                "baseline_accuracy": bt["accuracy_mean"],
+                "period_accuracy": pt["accuracy_mean"],
+                "baseline_median_response_ms": bt["median_response_ms"],
+                "period_median_response_ms": pt["median_response_ms"],
+                "baseline_hints_per_result": bt["hints_per_result"],
+                "period_hints_per_result": pt["hints_per_result"],
             }
         )
     return result
@@ -362,7 +423,7 @@ def review_flags(
         "MORE_HINTS_THAN_USUAL",
     ]
     if base.status != "compared":
-        reason = (
+        reason = base.reason or (
             "not enough activity in this period"
             if not base.period_sufficient
             else "not enough earlier activity to know what is usual for this person"
@@ -370,7 +431,11 @@ def review_flags(
         skipped += [NotEvaluated(rule, reason) for rule in change_rules]
     else:
         b = base.metrics
-        cur = totals(period_results, empty(SESSION_COLUMNS))
+        comparable = (
+            base.period_comparable if base.period_comparable is not None else period_results
+        )
+        cur = totals(comparable, empty(SESSION_COLUMNS))
+        daily_rows = [r for r in daily(comparable, days) if r["has_data"]]
 
         # Accuracy: also require that difficulty did not go up
         # (a harder level explains lower scores).
@@ -603,3 +668,38 @@ def review_flags(
             )
         )
     return flags, skipped
+
+
+# ---------------------------------------------------------------- support given (events)
+
+SUPPORT_EVENT_KEYS = {
+    "hint_requested": "hints_asked_for",
+    "hint_auto": "hints_given_automatically",
+    "instructions_repeated": "read_aloud_presses",
+    "stop_requested": "stop_requests",
+    "break_taken": "rests_taken",
+    "break_declined": "rests_declined",
+}
+
+
+def support_summary(events: pd.DataFrame, sessions: pd.DataFrame) -> dict[str, Any]:
+    """Counts from activity events (one row per stored event id, so a re-synced event is
+    counted once). Only sessions that have events are covered; coverage is reported."""
+    covered = int(events["session_id"].nunique()) if len(events) else 0
+    out: dict[str, Any] = {
+        "sessions_with_events": covered,
+        "sessions_started": len(sessions),
+    }
+    if not covered:
+        return out
+    by_type = events["event_type"].value_counts()
+    for event_type, key in SUPPORT_EVENT_KEYS.items():
+        out[key] = int(by_type.get(event_type, 0))
+    paused = events[events["event_type"] == "paused"]
+    sources = paused["source"].value_counts() if len(paused) else pd.Series(dtype="int64")
+    out["pauses_by_person"] = int(sources.get("patient", 0))
+    out["pauses_screen_left"] = int(sources.get("system", 0))
+    adapt = events[events["event_type"] == "adaptation"]
+    actions = adapt["action"].value_counts() if len(adapt) else pd.Series(dtype="int64")
+    out["adjustments"] = {str(k): int(v) for k, v in actions.items()}
+    return out

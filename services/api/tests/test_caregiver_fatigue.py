@@ -185,3 +185,65 @@ def test_caregiver_very_tired_on_the_phone_counts_once_in_analytics(api: Api) ->
     flag = tiredness()
     assert flag is not None
     assert flag.numbers["signals"] == 3 and flag.numbers["days"] == 3
+
+
+# ---------------------------------------------------------------- delivery to the phone (0014)
+
+
+def delivery(api: Api, actor, pid: str):
+    return api.client.get(f"/api/v1/patients/{pid}/fatigue-delivery", headers=actor.headers)
+
+
+def test_delivery_status_is_honest_waiting_then_sent(api: Api, family) -> None:
+    owner, pid, device = family
+    obs = observe(api, owner, pid, fatigue_level="severe").json()
+    before = delivery(api, owner, pid).json()
+    assert before["devices"][0]["last_sync_at"] is None
+    assert before["items"] == [{"observation_id": obs["id"], "status": "waiting", "sent_at": None}]
+
+    pull(api, device)  # the phone syncs
+    after = delivery(api, owner, pid).json()
+    assert after["items"][0]["status"] == "sent"
+    assert after["items"][0]["sent_at"] is not None
+    assert after["devices"][0]["last_sync_at"] is not None
+
+    # A newer note is waiting again until the next sync.
+    newer = observe(api, owner, pid, fatigue_level="mild").json()
+    items = {i["observation_id"]: i["status"] for i in delivery(api, owner, pid).json()["items"]}
+    assert items == {obs["id"]: "sent", newer["id"]: "waiting"}
+
+
+def test_delivery_without_a_phone_and_for_reports_made_on_the_phone(api: Api) -> None:
+    owner = api.user()
+    pid = api.patient(owner)
+    observe(api, owner, pid, fatigue_level="mild")
+    assert delivery(api, owner, pid).json()["items"][0]["status"] == "no_phone"
+
+    device = api.pair_device(owner, pid)
+    push(
+        api,
+        device,
+        {
+            "mutation_id": new_uuid(),
+            "entity_type": "fatigue_report",
+            "data": {"id": new_uuid(), "level": "severe", "reported_at": iso(now())},
+        },
+    )
+    statuses = {i["status"] for i in delivery(api, owner, pid).json()["items"]}
+    assert "from_phone" in statuses
+
+
+def test_phone_and_outsiders_cannot_read_caregiver_notes(api: Api, family) -> None:
+    owner, pid, device = family
+    observe(api, owner, pid, fatigue_level="severe", note="Synthetic: private caregiver note")
+    # The patient's own phone receives level and time through sync, never the notes.
+    assert api.client.get(
+        f"/api/v1/patients/{pid}/observations", headers=device.headers
+    ).status_code in (403, 404)
+    assert delivery(api, device, pid).status_code in (403, 404)
+    stranger = api.user()
+    assert delivery(api, stranger, pid).status_code == 404
+    assert (
+        api.client.get(f"/api/v1/patients/{pid}/observations", headers=stranger.headers).status_code
+        == 404
+    )

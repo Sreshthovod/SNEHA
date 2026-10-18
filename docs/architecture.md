@@ -69,8 +69,8 @@ models/           SQLAlchemy models (23 tables)
 schemas/          Pydantic request/response models = the API contract
 services/         access (authorization), auth, audit, activities, sync, files, history, changes
 api/routes/       thin HTTP handlers, one module per area
-migrations/       Alembic 0001–0013 (… 0009 activity events, 0010 fatigue level + fatigue sync, 0011 review items, 0012 memory relationship, 0013 instructions_repeated event)
-review/           review items: automated prompts → caregiver decision → clinician (confirmed only)
+migrations/       Alembic 0001–0015 (… 0009 activity events, 0010 fatigue level + fatigue sync, 0011 review items, 0012 memory relationship, 0013 instructions_repeated event, 0014 device pull progress, 0015 review evidence and context notes)
+review/           review items: automated prompts (with evidence) → caregiver context notes and decision → clinician (confirmed only)
 config/           personalization.toml, activities.toml, analytics.toml (versioned thresholds)
 ```
 
@@ -176,4 +176,17 @@ run (phone): answers, hints, "Read aloud" presses, tiredness, stop ──▶ eve
         │ read_aloud_first → each question read aloud              stop > tiredness > support > variety
         └──────────────────── suggestion + reason codes ◀───────────────────┘
                               (recorded on activity_started with decided_on)
+```
+
+## Session safety lifecycle (fatigue-safety-plan.md)
+
+```
+start ──▶ in_progress ──┬─ Stop (asked once) ─────────────▶ abandoned / user_stopped
+          │  ▲          ├─ I'm tired / very tired ─────────▶ abandoned / fatigue_detected + rest
+          │  │          ├─ last round / shortened ─────────▶ completed
+          ▼  │          └─ app killed ─▶ (next home) ──────▶ abandoned / timeout (at last step)
+        paused (Pause, or the screen is left) ─ "Carry on" ─┘
+Ending is written once; an ended session never restarts. Caregiver notes: phone button →
+applied at once; dashboard → phone sync (≤ 1/min during an activity) → applied at the next
+round; delivery shown on the dashboard from each device's last pull.
 ```

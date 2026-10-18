@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import type { Observation, SessionEvent } from '../../api/types'
-import { baseRoutes, calls, CAREGIVER, mockApi, observation, P, PATIENT, renderApp } from '../harness'
+import { analytics, baseRoutes, calls, CAREGIVER, mockApi, observation, P, PATIENT, renderApp, reviewItem } from '../harness'
 import { DIAGNOSTIC_WORDS } from '../banned-words'
 
 describe('tiredness level', () => {
@@ -38,6 +38,38 @@ describe('tiredness level', () => {
     await screen.findByText('Synthetic: cheerful')
     const second = calls.filter((c) => c.method === 'POST')[1].body as Record<string, unknown>
     expect(second.fatigue_level).toBeNull()
+  })
+})
+
+describe('tiredness note delivery to the phone', () => {
+  it('says honestly whether the phone has each note', async () => {
+    mockApi([
+      {
+        path: `${P}/observations`,
+        handler: () => [
+          observation({ id: 'o-sent', fatigue_level: 'severe', note: 'Synthetic: very sleepy' }),
+          observation({ id: 'o-wait', fatigue_level: 'mild', note: 'Synthetic: a bit slow today' }),
+          observation({ id: 'o-mood', category: 'mood', note: 'Synthetic: cheerful' }),
+        ],
+      },
+      {
+        path: `${P}/fatigue-delivery`,
+        handler: () => ({
+          devices: [{ device_name: 'Synthetic phone', last_sync_at: '2026-10-05T04:00:00Z' }],
+          items: [
+            { observation_id: 'o-sent', status: 'sent', sent_at: '2026-10-05T04:00:00Z' },
+            { observation_id: 'o-wait', status: 'waiting', sent_at: null },
+          ],
+        }),
+      },
+      ...baseRoutes(CAREGIVER),
+    ])
+    renderApp(`/app/patients/${PATIENT.id}/observations`)
+    expect(await screen.findByTestId('delivery-o-sent')).toHaveTextContent(/On the phone \(the phone last synced/)
+    expect(screen.getByTestId('delivery-o-wait')).toHaveTextContent(
+      /Not on the phone yet.*Waiting for the phone to sync/,
+    )
+    expect(screen.queryByTestId('delivery-o-mood')).toBeNull()
   })
 })
 
@@ -99,5 +131,92 @@ describe('session history', () => {
     renderApp(`/app/patients/${PATIENT.id}/history`)
     await userEvent.click(await screen.findByRole('button', { name: 'What happened' }))
     expect(await screen.findByText(/No step-by-step record for this session/)).toBeInTheDocument()
+  })
+})
+
+describe('caregiver analytics (Part 5)', () => {
+  it('warns that numbers may be incomplete, shows support given, and keeps unknown as unknown', async () => {
+    mockApi([
+      {
+        path: `${P}/analytics`,
+        handler: () =>
+          analytics({
+            sync: {
+              phone_paired: true,
+              last_phone_sync_at: '2026-10-05T04:00:00Z',
+              may_be_incomplete: true,
+              reason: 'the phone has not shared its records since the end of this period; activities done offline may be missing',
+            },
+            support: {
+              sessions_with_events: 2,
+              sessions_started: 4,
+              hints_asked_for: 3,
+              hints_given_automatically: 1,
+              read_aloud_presses: 0,
+              pauses_by_person: 1,
+              pauses_screen_left: 2,
+              stop_requests: 1,
+              rests_taken: 1,
+              rests_declined: 0,
+              adjustments: { shorten: 2, show_hint: 1 },
+            },
+          }),
+      },
+      ...baseRoutes(CAREGIVER),
+    ])
+    renderApp(`/app/patients/${PATIENT.id}/analytics`)
+    expect(await screen.findByText('These numbers may be incomplete')).toBeInTheDocument()
+    expect(screen.getByText(/The phone has not shared its records since the end of this period/)).toBeInTheDocument()
+    expect(screen.getByText(/From the step-by-step record of 2 of 4 sessions/)).toBeInTheDocument()
+    expect(screen.getByText('Activities shortened by the app').nextSibling).toHaveTextContent('2')
+  })
+
+  it('says when there is no step-by-step record instead of showing zeros', async () => {
+    mockApi([
+      { path: `${P}/analytics`, handler: () => analytics({ support: { sessions_with_events: 0, sessions_started: 3 } }) },
+      ...baseRoutes(CAREGIVER),
+    ])
+    renderApp(`/app/patients/${PATIENT.id}/analytics`)
+    expect(await screen.findByText(/No step-by-step record for these sessions/)).toBeInTheDocument()
+    expect(screen.queryByText('Hints asked for')).toBeNull()
+  })
+
+  it('shows what a review item is based on and lets a caregiver add context', async () => {
+    let item = reviewItem({
+      evidence: {
+        result_ids: ['r1', 'r2'],
+        results_considered: 7,
+        activities: ['Matching pairs'],
+        missing_days: ['2026-10-04'],
+        limitations: ['LOW_ENJOYMENT: too few enjoyment answers'],
+      },
+      context_notes: [],
+    })
+    mockApi([
+      { path: `${P}/analytics`, handler: () => analytics() },
+      { method: 'POST', path: `${P}/review-items/scan`, handler: () => [item] },
+      { path: `${P}/review-items`, handler: () => [item] },
+      {
+        method: 'POST',
+        path: `${P}/review-items/ri-1/context`,
+        handler: ({ body }) => {
+          item = { ...item, context_notes: [{ by: CAREGIVER.id, at: '2026-10-10T05:00:00Z', note: (body as { note: string }).note }] }
+          return item
+        },
+      },
+      ...baseRoutes(CAREGIVER, { manager: false }),
+    ])
+    renderApp(`/app/patients/${PATIENT.id}/analytics`)
+    await userEvent.click(await screen.findByText('What this is based on'))
+    expect(screen.getByText(/7 recorded activities \(Matching pairs\)/)).toBeInTheDocument()
+    expect(screen.getByText('LOW_ENJOYMENT: too few enjoyment answers')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /^Add context: / }))
+    await userEvent.type(screen.getByLabelText(/^Context/), 'Synthetic: relatives visiting')
+    await userEvent.click(screen.getByRole('button', { name: 'Save context' }))
+    expect(await screen.findByText(/Context added .*: Synthetic: relatives visiting/)).toBeInTheDocument()
+    const sent = calls.find((c) => c.path.endsWith('/context'))
+    expect(sent?.body).toEqual({ note: 'Synthetic: relatives visiting' })
+    // A helper can add context but still cannot decide.
+    expect(screen.getByText('A managing family member decides on review items.')).toBeInTheDocument()
   })
 })

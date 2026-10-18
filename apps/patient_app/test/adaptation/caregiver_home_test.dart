@@ -52,8 +52,12 @@ void main() {
     );
     await tapVisible(tester, find.byKey(const ValueKey('caregiver_severe')));
     expect(
-      find.text('Thank you. The next suggestion will be a rest.'),
+      find.text(
+        'Thank you. The next suggestion will be a rest. Saved on this phone. '
+        'It will be shared with the family dashboard when the phone is online.',
+      ),
       findsOneWidget,
+      reason: 'honest: offline, the report is only on this phone for now',
     );
     final rows = await real(tester, () => h.local.db.query('fatigue_reports'));
     expect(rows.single['level'], 'severe');

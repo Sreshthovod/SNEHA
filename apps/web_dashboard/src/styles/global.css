@@ -1767,6 +1767,20 @@ h2.card__title {
   margin-top: var(--space-3);
 }
 
+/* ---------- Analytics: support summary, review context ---------- */
+.analytics-subsection {
+  margin-top: var(--space-6);
+}
+.analytics-subsection h4 {
+  margin-bottom: var(--space-2);
+}
+.review-context {
+  margin-top: var(--space-2);
+}
+.review-context-form {
+  margin-top: var(--space-3);
+}
+
 /* ---------- Chips ---------- */
 .chip-list {
   display: flex;

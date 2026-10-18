@@ -1,6 +1,106 @@
 {
   "components": {
     "schemas": {
+      "ActivityComparison": {
+        "properties": {
+          "activity_id": {
+            "title": "Activity Id",
+            "type": "string"
+          },
+          "baseline_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Accuracy"
+          },
+          "baseline_hints_per_result": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Hints Per Result"
+          },
+          "baseline_median_response_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Median Response Ms"
+          },
+          "baseline_results": {
+            "title": "Baseline Results",
+            "type": "integer"
+          },
+          "period_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Accuracy"
+          },
+          "period_hints_per_result": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Hints Per Result"
+          },
+          "period_median_response_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Median Response Ms"
+          },
+          "period_results": {
+            "title": "Period Results",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "activity_id",
+          "title",
+          "baseline_results",
+          "period_results",
+          "baseline_accuracy",
+          "period_accuracy",
+          "baseline_median_response_ms",
+          "period_median_response_ms",
+          "baseline_hints_per_result",
+          "period_hints_per_result"
+        ],
+        "title": "ActivityComparison",
+        "type": "object"
+      },
       "ActivityDefinitionOut": {
         "properties": {
           "activity_type": {
@@ -431,6 +531,26 @@
             "title": "Rules Not Evaluated",
             "type": "array"
           },
+          "support": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SupportSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sync": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "timezone": {
             "title": "Timezone",
             "type": "string"
@@ -667,6 +787,22 @@
       },
       "BaselineSummary": {
         "properties": {
+          "activities_compared": {
+            "description": "Activities played in both windows (like with like).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Activities Compared",
+            "type": "array"
+          },
+          "activities_not_compared": {
+            "description": "Played in this period only: not compared.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Activities Not Compared",
+            "type": "array"
+          },
           "comparisons": {
             "items": {
               "$ref": "#/components/schemas/BaselineComparison"
@@ -682,6 +818,25 @@
             "format": "date",
             "title": "From Date",
             "type": "string"
+          },
+          "per_activity": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityComparison"
+            },
+            "title": "Per Activity",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why no comparison was made.",
+            "title": "Reason"
           },
           "required_days": {
             "title": "Required Days",
@@ -1270,6 +1425,30 @@
         "title": "ConsentType",
         "type": "string"
       },
+      "ContextNoteOut": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "by",
+          "at",
+          "note"
+        ],
+        "title": "ContextNoteOut",
+        "type": "object"
+      },
       "ContextObservation": {
         "properties": {
           "category": {
@@ -1517,6 +1696,40 @@
           "code"
         ],
         "title": "DevicePairRequest",
+        "type": "object"
+      },
+      "DeviceSyncOut": {
+        "properties": {
+          "device_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "last_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Last time the phone fetched changes.",
+            "title": "Last Sync At"
+          }
+        },
+        "required": [
+          "device_name",
+          "last_sync_at"
+        ],
+        "title": "DeviceSyncOut",
         "type": "object"
       },
       "Engagement": {
@@ -2013,6 +2226,68 @@
           "reason"
         ],
         "title": "FallbackOut",
+        "type": "object"
+      },
+      "FatigueDeliveryItem": {
+        "properties": {
+          "observation_id": {
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "status": {
+            "description": "sent: the phone has fetched it; waiting: not yet (the phone applies it at its next sync); no_phone: no phone is paired; from_phone: reported on the phone",
+            "enum": [
+              "sent",
+              "waiting",
+              "no_phone",
+              "from_phone"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id",
+          "status"
+        ],
+        "title": "FatigueDeliveryItem",
+        "type": "object"
+      },
+      "FatigueDeliveryOut": {
+        "description": "Whether caregivers' tiredness notes have reached the patient's phone. Honest status\nonly: 'sent' means the phone fetched the change, not that an activity was running.",
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceSyncOut"
+            },
+            "title": "Devices",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FatigueDeliveryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "devices",
+          "items"
+        ],
+        "title": "FatigueDeliveryOut",
         "type": "object"
       },
       "FatigueLevel": {
@@ -5100,6 +5375,23 @@
         "title": "ResultSubmissionOut",
         "type": "object"
       },
+      "ReviewContext": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "description": "What the caregiver knows (kept; does not decide).",
+            "maxLength": 1000,
+            "minLength": 3,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "ReviewContext",
+        "type": "object"
+      },
       "ReviewDecision": {
         "additionalProperties": false,
         "properties": {
@@ -5124,6 +5416,46 @@
           "reason"
         ],
         "title": "ReviewDecision",
+        "type": "object"
+      },
+      "ReviewEvidence": {
+        "properties": {
+          "activities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Activities",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "missing_days": {
+            "items": {
+              "format": "date",
+              "type": "string"
+            },
+            "title": "Missing Days",
+            "type": "array"
+          },
+          "result_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Result Ids",
+            "type": "array"
+          },
+          "results_considered": {
+            "default": 0,
+            "title": "Results Considered",
+            "type": "integer"
+          }
+        },
+        "title": "ReviewEvidence",
         "type": "object"
       },
       "ReviewFlag": {
@@ -5247,6 +5579,13 @@
             "title": "Config Version",
             "type": "string"
           },
+          "context_notes": {
+            "items": {
+              "$ref": "#/components/schemas/ContextNoteOut"
+            },
+            "title": "Context Notes",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -5285,6 +5624,9 @@
               }
             ],
             "title": "Decision Reason"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/ReviewEvidence"
           },
           "explanation": {
             "title": "Explanation",
@@ -5790,6 +6132,127 @@
         "title": "SupportOut",
         "type": "object"
       },
+      "SupportSummary": {
+        "description": "Support given during activities, from activity events. Counts are present only when\nat least one session in the period has a step-by-step record.",
+        "properties": {
+          "adjustments": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjustments"
+          },
+          "hints_asked_for": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hints Asked For"
+          },
+          "hints_given_automatically": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hints Given Automatically"
+          },
+          "pauses_by_person": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pauses By Person"
+          },
+          "pauses_screen_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pauses Screen Left"
+          },
+          "read_aloud_presses": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read Aloud Presses"
+          },
+          "rests_declined": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rests Declined"
+          },
+          "rests_taken": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rests Taken"
+          },
+          "sessions_started": {
+            "title": "Sessions Started",
+            "type": "integer"
+          },
+          "sessions_with_events": {
+            "title": "Sessions With Events",
+            "type": "integer"
+          },
+          "stop_requests": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Requests"
+          }
+        },
+        "required": [
+          "sessions_with_events",
+          "sessions_started"
+        ],
+        "title": "SupportSummary",
+        "type": "object"
+      },
       "SyncChangeOut": {
         "properties": {
           "changed_at": {
@@ -5966,6 +6429,50 @@
           "results"
         ],
         "title": "SyncPushResponse",
+        "type": "object"
+      },
+      "SyncStatus": {
+        "description": "Whether everything the phone recorded for this period has probably reached the server.",
+        "properties": {
+          "last_phone_sync_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Phone Sync At"
+          },
+          "may_be_incomplete": {
+            "title": "May Be Incomplete",
+            "type": "boolean"
+          },
+          "phone_paired": {
+            "title": "Phone Paired",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "phone_paired",
+          "last_phone_sync_at",
+          "may_be_incomplete",
+          "reason"
+        ],
+        "title": "SyncStatus",
         "type": "object"
       },
       "SynthesizeRequest": {
@@ -6153,6 +6660,18 @@
           },
           "sessions_ended_for_fatigue": {
             "title": "Sessions Ended For Fatigue",
+            "type": "integer"
+          },
+          "sessions_in_progress": {
+            "default": 0,
+            "description": "Not ended yet (or the phone has not shared the ending).",
+            "title": "Sessions In Progress",
+            "type": "integer"
+          },
+          "sessions_interrupted": {
+            "default": 0,
+            "description": "Ended because the app was closed during an activity (timeout).",
+            "title": "Sessions Interrupted",
             "type": "integer"
           },
           "sessions_started": {
@@ -8835,6 +9354,109 @@
         "summary": "Erase Patient",
         "tags": [
           "patients"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/fatigue-delivery": {
+      "get": {
+        "description": "For each recent tiredness note: has the patient's phone fetched it yet?",
+        "operationId": "fatigue_delivery_api_v1_patients__patient_id__fatigue_delivery_get",
+        "parameters": [
+          {
+            "description": "Patient profile ID",
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "description": "Patient profile ID",
+              "format": "uuid",
+              "title": "Patient Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FatigueDeliveryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Fatigue Delivery",
+        "tags": [
+          "care"
         ]
       }
     },
@@ -12136,6 +12758,116 @@
           }
         ],
         "summary": "Scan Review Items",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/review-items/{item_id}/context": {
+      "post": {
+        "description": "Add context (any caregiver of this person). The decision and evidence are unchanged.",
+        "operationId": "add_review_context_api_v1_patients__patient_id__review_items__item_id__context_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "title": "Item Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Patient profile ID",
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "description": "Patient profile ID",
+              "format": "uuid",
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewContext"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Review Context",
         "tags": [
           "review"
         ]

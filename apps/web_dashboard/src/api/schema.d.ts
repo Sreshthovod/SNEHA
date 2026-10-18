@@ -490,6 +490,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/fatigue-delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fatigue Delivery
+         * @description For each recent tiredness note: has the patient's phone fetched it yet?
+         */
+        get: operations["fatigue_delivery_api_v1_patients__patient_id__fatigue_delivery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/history": {
         parameters: {
             query?: never;
@@ -938,6 +958,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/patients/{patient_id}/review-items/{item_id}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Review Context
+         * @description Add context (any caregiver of this person). The decision and evidence are unchanged.
+         */
+        post: operations["add_review_context_api_v1_patients__patient_id__review_items__item_id__context_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/patients/{patient_id}/review-items/{item_id}/decision": {
         parameters: {
             query?: never;
@@ -1170,6 +1210,29 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActivityComparison */
+        ActivityComparison: {
+            /** Activity Id */
+            activity_id: string;
+            /** Baseline Accuracy */
+            baseline_accuracy: number | null;
+            /** Baseline Hints Per Result */
+            baseline_hints_per_result: number | null;
+            /** Baseline Median Response Ms */
+            baseline_median_response_ms: number | null;
+            /** Baseline Results */
+            baseline_results: number;
+            /** Period Accuracy */
+            period_accuracy: number | null;
+            /** Period Hints Per Result */
+            period_hints_per_result: number | null;
+            /** Period Median Response Ms */
+            period_median_response_ms: number | null;
+            /** Period Results */
+            period_results: number;
+            /** Title */
+            title: string;
+        };
         /** ActivityDefinitionOut */
         ActivityDefinitionOut: {
             activity_type: components["schemas"]["ActivityType"];
@@ -1333,6 +1396,8 @@ export interface components {
             review_flags_withheld?: boolean;
             /** Rules Not Evaluated */
             rules_not_evaluated: components["schemas"]["RuleNotEvaluated"][];
+            support?: components["schemas"]["SupportSummary"] | null;
+            sync?: components["schemas"]["SyncStatus"] | null;
             /** Timezone */
             timezone: string;
             /**
@@ -1409,6 +1474,16 @@ export interface components {
         };
         /** BaselineSummary */
         BaselineSummary: {
+            /**
+             * Activities Compared
+             * @description Activities played in both windows (like with like).
+             */
+            activities_compared?: string[];
+            /**
+             * Activities Not Compared
+             * @description Played in this period only: not compared.
+             */
+            activities_not_compared?: string[];
             /** Comparisons */
             comparisons: components["schemas"]["BaselineComparison"][];
             /** Days */
@@ -1418,6 +1493,13 @@ export interface components {
              * Format: date
              */
             from_date: string;
+            /** Per Activity */
+            per_activity?: components["schemas"]["ActivityComparison"][];
+            /**
+             * Reason
+             * @description Why no comparison was made.
+             */
+            reason?: string | null;
             /** Required Days */
             required_days: number;
             /** Required Results */
@@ -1656,6 +1738,18 @@ export interface components {
          * @enum {string}
          */
         ConsentType: "data_processing" | "clinician_sharing" | "cloud_ai" | "voice_processing";
+        /** ContextNoteOut */
+        ContextNoteOut: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** By */
+            by: string;
+            /** Note */
+            note: string;
+        };
         /** ContextObservation */
         ContextObservation: {
             /** Category */
@@ -1753,6 +1847,16 @@ export interface components {
              * @default Patient device
              */
             device_name?: string;
+        };
+        /** DeviceSyncOut */
+        DeviceSyncOut: {
+            /** Device Name */
+            device_name: string | null;
+            /**
+             * Last Sync At
+             * @description Last time the phone fetched changes.
+             */
+            last_sync_at: string | null;
         };
         /**
          * Engagement
@@ -1922,6 +2026,30 @@ export interface components {
             reason: string | null;
             /** Used */
             used: boolean;
+        };
+        /** FatigueDeliveryItem */
+        FatigueDeliveryItem: {
+            /** Observation Id */
+            observation_id: string;
+            /** Sent At */
+            sent_at?: string | null;
+            /**
+             * Status
+             * @description sent: the phone has fetched it; waiting: not yet (the phone applies it at its next sync); no_phone: no phone is paired; from_phone: reported on the phone
+             * @enum {string}
+             */
+            status: "sent" | "waiting" | "no_phone" | "from_phone";
+        };
+        /**
+         * FatigueDeliveryOut
+         * @description Whether caregivers' tiredness notes have reached the patient's phone. Honest status
+         *     only: 'sent' means the phone fetched the change, not that an activity was running.
+         */
+        FatigueDeliveryOut: {
+            /** Devices */
+            devices: components["schemas"]["DeviceSyncOut"][];
+            /** Items */
+            items: components["schemas"]["FatigueDeliveryItem"][];
         };
         /**
          * FatigueLevel
@@ -3077,6 +3205,14 @@ export interface components {
             personalization: components["schemas"]["StateOut"];
             result: components["schemas"]["ResultOut"];
         };
+        /** ReviewContext */
+        ReviewContext: {
+            /**
+             * Note
+             * @description What the caregiver knows (kept; does not decide).
+             */
+            note: string;
+        };
         /** ReviewDecision */
         ReviewDecision: {
             /**
@@ -3089,6 +3225,22 @@ export interface components {
              * @description Why: what the caregiver knows (required for both decisions; kept).
              */
             reason: string;
+        };
+        /** ReviewEvidence */
+        ReviewEvidence: {
+            /** Activities */
+            activities?: string[];
+            /** Limitations */
+            limitations?: string[];
+            /** Missing Days */
+            missing_days?: string[];
+            /** Result Ids */
+            result_ids?: string[];
+            /**
+             * Results Considered
+             * @default 0
+             */
+            results_considered?: number;
         };
         /** ReviewFlag */
         ReviewFlag: {
@@ -3153,6 +3305,8 @@ export interface components {
         ReviewItemOut: {
             /** Config Version */
             config_version: string;
+            /** Context Notes */
+            context_notes?: components["schemas"]["ContextNoteOut"][];
             /**
              * Created At
              * Format: date-time
@@ -3164,6 +3318,7 @@ export interface components {
             decided_by_id: string | null;
             /** Decision Reason */
             decision_reason: string | null;
+            evidence?: components["schemas"]["ReviewEvidence"];
             /** Explanation */
             explanation: string;
             /** Id */
@@ -3393,6 +3548,37 @@ export interface components {
              */
             kind: string;
         };
+        /**
+         * SupportSummary
+         * @description Support given during activities, from activity events. Counts are present only when
+         *     at least one session in the period has a step-by-step record.
+         */
+        SupportSummary: {
+            /** Adjustments */
+            adjustments?: {
+                [key: string]: number;
+            } | null;
+            /** Hints Asked For */
+            hints_asked_for?: number | null;
+            /** Hints Given Automatically */
+            hints_given_automatically?: number | null;
+            /** Pauses By Person */
+            pauses_by_person?: number | null;
+            /** Pauses Screen Left */
+            pauses_screen_left?: number | null;
+            /** Read Aloud Presses */
+            read_aloud_presses?: number | null;
+            /** Rests Declined */
+            rests_declined?: number | null;
+            /** Rests Taken */
+            rests_taken?: number | null;
+            /** Sessions Started */
+            sessions_started: number;
+            /** Sessions With Events */
+            sessions_with_events: number;
+            /** Stop Requests */
+            stop_requests?: number | null;
+        };
         /** SyncChangeOut */
         SyncChangeOut: {
             /**
@@ -3452,6 +3638,20 @@ export interface components {
         SyncPushResponse: {
             /** Results */
             results: components["schemas"]["MutationResult"][];
+        };
+        /**
+         * SyncStatus
+         * @description Whether everything the phone recorded for this period has probably reached the server.
+         */
+        SyncStatus: {
+            /** Last Phone Sync At */
+            last_phone_sync_at: string | null;
+            /** May Be Incomplete */
+            may_be_incomplete: boolean;
+            /** Phone Paired */
+            phone_paired: boolean;
+            /** Reason */
+            reason: string | null;
         };
         /** SynthesizeRequest */
         SynthesizeRequest: {
@@ -3513,6 +3713,18 @@ export interface components {
             sessions_ended: number;
             /** Sessions Ended For Fatigue */
             sessions_ended_for_fatigue: number;
+            /**
+             * Sessions In Progress
+             * @description Not ended yet (or the phone has not shared the ending).
+             * @default 0
+             */
+            sessions_in_progress?: number;
+            /**
+             * Sessions Interrupted
+             * @description Ended because the app was closed during an activity (timeout).
+             * @default 0
+             */
+            sessions_interrupted?: number;
             /** Sessions Started */
             sessions_started: number;
             /** Sessions Stopped */
@@ -5317,6 +5529,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    fatigue_delivery_api_v1_patients__patient_id__fatigue_delivery_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Patient profile ID */
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FatigueDeliveryOut"];
+                };
             };
             /** @description Unauthorized */
             401: {
@@ -7570,6 +7852,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReviewItemOut"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_review_context_api_v1_patients__patient_id__review_items__item_id__context_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: string;
+                /** @description Patient profile ID */
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewContext"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewItemOut"];
                 };
             };
             /** @description Unauthorized */

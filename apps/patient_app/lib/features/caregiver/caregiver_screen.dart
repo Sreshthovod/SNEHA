@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../adaptation/session_policy.dart';
 import '../../app.dart';
 import '../../app_services.dart';
+import '../../core/connectivity/server_status.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../ui/widgets.dart';
 import '../privacy/privacy_screen.dart';
@@ -37,10 +38,15 @@ class _CaregiverScreenState extends State<CaregiverScreen> {
       level: level.code,
     );
     if (!mounted) return;
+    // Honest about sharing: offline, it is only on this phone for now.
+    final offline = services.serverStatus.connection != ServerConnection.online;
     setState(
-      () => _message = level == FatigueLevel.severe
-          ? s.t('caregiver_reported_severe')
-          : s.t('caregiver_reported_mild'),
+      () => _message = [
+        level == FatigueLevel.severe
+            ? s.t('caregiver_reported_severe')
+            : s.t('caregiver_reported_mild'),
+        if (offline) s.t('caregiver_saved_offline'),
+      ].join(' '),
     );
   }
 

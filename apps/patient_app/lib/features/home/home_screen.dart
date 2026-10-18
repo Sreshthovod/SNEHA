@@ -36,6 +36,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _started = true;
     final services = AppScope.of(context);
     _loadToday(services);
+    // No activity is open on the home screen: any session left running (the
+    // app was closed mid-activity) is recorded as interrupted, once.
+    services.recorder
+        .closeInterruptedSessions(widget.profile.patientId)
+        .ignore();
     // Check the connection after the first frame (it notifies listeners);
     // if online, share progress quietly in the background.
     WidgetsBinding.instance.addPostFrameCallback(

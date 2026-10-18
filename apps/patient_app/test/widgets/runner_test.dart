@@ -41,6 +41,9 @@ void main() {
   ) async {
     final h = await pairedHarness(tester);
     addTearDown(h.dispose);
+    // Offline, so the whole run stays in the outbox (online, the runner shares
+    // it in the background; see test/safety).
+    h.server.online = false;
     await openObjectGame(tester, h);
 
     // difficulty 1 → 3 rounds

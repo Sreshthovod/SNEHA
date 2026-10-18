@@ -4,12 +4,13 @@ import {
   correctObservation,
   createObservation,
   deleteObservation,
+  getFatigueDelivery,
   listObservations,
   listRevisions,
   resolveObservation,
   reviewObservation,
 } from '../../api/observations'
-import type { FatigueLevel, Observation, ObservationCategory, ObservationStatus } from '../../api/types'
+import type { FatigueDeliveryItem, FatigueLevel, Observation, ObservationCategory, ObservationStatus } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Dialog } from '../../components/ui/Dialog'
@@ -151,7 +152,37 @@ function RevisionHistory({ observation }: { observation: Observation }) {
   )
 }
 
-function ObservationItem({ observation: o, onChanged }: { observation: Observation; onChanged: (msg?: string) => void }) {
+const DELIVERY_TEXT: Record<FatigueDeliveryItem['status'], string> = {
+  sent: 'On the phone',
+  waiting: 'Waiting for the phone to sync. Until then the phone does not know about this note.',
+  no_phone: 'No phone is paired, so this note only affects suggestions made online.',
+  from_phone: 'Reported on the phone, where it applied straight away.',
+}
+
+/** Honest status of a tiredness note on the patient's phone. */
+function DeliveryLine({ item, timezone }: { item?: FatigueDeliveryItem; timezone: string }) {
+  if (!item) return null
+  const text =
+    item.status === 'sent' && item.sent_at
+      ? `${DELIVERY_TEXT.sent} (the phone last synced ${formatDateTime(item.sent_at, timezone)}).`
+      : DELIVERY_TEXT[item.status]
+  return (
+    <p className="field__hint" data-testid={`delivery-${item.observation_id}`}>
+      <StatusBadge tone={item.status === 'waiting' ? 'warning' : 'neutral'} label={item.status === 'waiting' ? 'Not on the phone yet' : 'Phone'} />{' '}
+      {text}
+    </p>
+  )
+}
+
+function ObservationItem({
+  observation: o,
+  delivery,
+  onChanged,
+}: {
+  observation: Observation
+  delivery?: FatigueDeliveryItem
+  onChanged: (msg?: string) => void
+}) {
   const { patient, me, isClinician, isManager } = usePatient()
   const [mode, setMode] = useState<Mode | null>(null)
   const [showHistory, setShowHistory] = useState(false)
@@ -169,6 +200,7 @@ function ObservationItem({ observation: o, onChanged }: { observation: Observati
         {' '}· noticed {formatDateTime(o.observed_at, tz)} · {mine ? 'by you' : 'by another caregiver'}
       </p>
       {o.fatigue_level && <p className="field__hint">Level: {FATIGUE_LEVEL_LABELS[o.fatigue_level]}</p>}
+      {o.category === 'fatigue' && <DeliveryLine item={delivery} timezone={tz} />}
       <p>{o.note}</p>
       <p className="field__hint">
         {SOURCE_LABELS[o.source]} · recorded {formatDateTime(o.created_at, tz)}
@@ -256,6 +288,12 @@ export function ObservationsSection() {
     (signal) => listObservations(patient.id, { limit: 100, status: statusFilter || undefined }, signal),
     [patient.id, statusFilter],
   )
+  // Delivery to the phone is fetched alongside; a failure only hides the status line.
+  const delivery = useAsync(
+    (signal) => getFatigueDelivery(patient.id, signal).catch(() => null),
+    [patient.id, observations.data],
+  )
+  const deliveryById = new Map((delivery.data?.items ?? []).map((i) => [i.observation_id, i]))
   const [form, setForm] = useState({
     category: 'fatigue' as ObservationCategory,
     note: '',
@@ -263,7 +301,7 @@ export function ObservationsSection() {
     fatigue_level: 'mild' as FatigueLevel,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [saved, setSaved] = useState(false)
+  const [saved, setSaved] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const create = useAction((body: Parameters<typeof createObservation>[1]) => createObservation(patient.id, body))
 
@@ -275,7 +313,7 @@ export function ObservationsSection() {
     else if (new Date(form.observed_at).getTime() > Date.now() + 5 * 60_000)
       next.observed_at = 'This time is in the future.'
     setErrors(next)
-    setSaved(false)
+    setSaved(null)
     if (Object.keys(next).length) return
     const result = await create.run({
       category: form.category,
@@ -285,7 +323,11 @@ export function ObservationsSection() {
     })
     if (result) {
       setForm((f) => ({ ...f, note: '' }))
-      setSaved(true)
+      setSaved(
+        form.category === 'fatigue'
+          ? 'Observation saved. The phone applies it at its next sync; each note below shows whether the phone has it yet.'
+          : 'Observation saved.',
+      )
       observations.reload()
     }
   }
@@ -320,7 +362,7 @@ export function ObservationsSection() {
             <TextField label="When" type="datetime-local" value={form.observed_at} onChange={(e) => setForm((f) => ({ ...f, observed_at: e.target.value }))} error={errors.observed_at} required />
             <TextArea label="Note" value={form.note} maxLength={2000} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} error={errors.note} required />
             <ActionError error={create.error} />
-            {saved && <Notice tone="success">Observation saved.</Notice>}
+            {saved && <Notice tone="success">{saved}</Notice>}
             <Button type="submit" pending={create.pending}>Save observation</Button>
           </form>
         </Card>
@@ -342,6 +384,7 @@ export function ObservationsSection() {
             <ObservationItem
               key={`${o.id}-${o.version}-${o.status}`}
               observation={o}
+              delivery={deliveryById.get(o.id)}
               onChanged={(msg) => {
                 setNotice(msg ?? null)
                 observations.reload()

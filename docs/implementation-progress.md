@@ -70,3 +70,34 @@ Plan, signals, reason codes and limits: [adaptive-engine-plan.md](adaptive-engin
 | 5 | Tests | ✅ API 360, phone 225, dashboard 69 passing |
 
 Versions: Alembic head **0013**, engine **1.2.0**, personalization config **2026.10.3**.
+
+## Fatigue-aware safety (2026-10-18)
+
+Plan, traced paths, policy and limits: [fatigue-safety-plan.md](fatigue-safety-plan.md).
+
+| # | Increment | Status |
+|---|---|---|
+| 1 | Stop dialog: stopping is the primary choice, asked once | ✅ |
+| 2 | Leaving the screen pauses the run; no silent restart; background time excluded | ✅ |
+| 3 | Interrupted sessions closed as `timeout` at the last recorded step; endings written once | ✅ |
+| 4 | Background sync during an activity so dashboard tiredness notes reach it | ✅ |
+| 5 | Honest delivery status for tiredness notes on the dashboard (migration 0014) and honest offline wording on the phone | ✅ |
+| 6 | Tests | ✅ API 363, phone 232, dashboard 70 passing |
+
+Versions: Alembic head **0014**. Engine and config unchanged (1.2.0 / 2026.10.3).
+
+## Caregiver analytics, review and reporting (2026-10-18)
+
+Plan, metric definitions and limits: [caregiver-analytics-plan.md](caregiver-analytics-plan.md).
+
+| # | Increment | Status |
+|---|---|---|
+| 1 | Like-with-like comparison with the person's usual pattern; per-activity rows | ✅ |
+| 2 | Sessions: interrupted and still open shown separately | ✅ |
+| 3 | Support given during activities from step-by-step events, with coverage | ✅ |
+| 4 | Data completeness from phone sync ("may be incomplete" with the reason) | ✅ |
+| 5 | Review items keep their evidence; caregivers add context notes (migration 0015) | ✅ |
+| 6 | PDF and dashboard show all of the above in words | ✅ |
+| 7 | Tests | ✅ API 374, phone 232, dashboard 73 passing; tsc, lint, build, contract check clean |
+
+Versions: Alembic head **0015**. Engine and config unchanged (1.2.0 / 2026.10.3).

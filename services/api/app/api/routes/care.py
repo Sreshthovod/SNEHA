@@ -3,13 +3,14 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import DbSessionDep, PrincipalDep, SettingsDep, patient_access
 from app.core.errors import AppError, conflict, forbidden, not_found
 from app.core.time import utc_now
 from app.models.care import CaregiverObservation, ObservationRevision, Report, RoutineItem
 from app.models.enums import (
+    AuthSessionKind,
     ObservationCategory,
     ObservationStatus,
     RecordSource,
@@ -18,8 +19,13 @@ from app.models.enums import (
     SyncOperation,
     UserRole,
 )
+from app.models.sync import SyncChange
+from app.models.users import AuthSession, User
 from app.reports.service import generate as generate_report
 from app.schemas.care import (
+    DeviceSyncOut,
+    FatigueDeliveryItem,
+    FatigueDeliveryOut,
     ObservationCorrection,
     ObservationCreate,
     ObservationOut,
@@ -118,6 +124,61 @@ def _check_version(obs: CaregiverObservation, expected: int) -> None:
             f"This observation was changed by someone else (current version {obs.version}). "
             "Reload and try again.",
         )
+
+
+@router.get("/fatigue-delivery", response_model=FatigueDeliveryOut, responses=_ERRORS)
+def fatigue_delivery(
+    db: DbSessionDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    access: PatientAccess = patient_access(Permission.VIEW_OBSERVATIONS),
+) -> FatigueDeliveryOut:
+    """For each recent tiredness note: has the patient's phone fetched it yet?"""
+    devices = list(
+        db.scalars(
+            select(AuthSession)
+            .join(User, User.id == AuthSession.user_id)
+            .where(
+                User.id == access.patient.user_id,
+                AuthSession.kind == AuthSessionKind.DEVICE,
+                AuthSession.revoked_at.is_(None),
+                AuthSession.expires_at > utc_now(),
+            )
+        )
+    )
+    reached = max((d.last_pull_seq or 0 for d in devices), default=0)
+    sent_at = max((d.last_pull_at for d in devices if d.last_pull_at), default=None)
+    notes = db.scalars(
+        select(CaregiverObservation)
+        .where(
+            CaregiverObservation.patient_id == access.patient.id,
+            CaregiverObservation.category == ObservationCategory.FATIGUE,
+        )
+        .order_by(CaregiverObservation.observed_at.desc())
+        .limit(limit)
+    ).all()
+    items = []
+    for obs in notes:
+        latest = db.scalar(
+            select(func.max(SyncChange.seq)).where(
+                SyncChange.entity_type == SyncEntity.FATIGUE_REPORT,
+                SyncChange.entity_id == obs.id,
+            )
+        )
+        if obs.source is RecordSource.DEVICE:
+            status, when = "from_phone", None
+        elif not devices:
+            status, when = "no_phone", None
+        elif latest is not None and latest <= reached:
+            status, when = "sent", sent_at
+        else:
+            status, when = "waiting", None
+        items.append(FatigueDeliveryItem(observation_id=obs.id, status=status, sent_at=when))
+    return FatigueDeliveryOut(
+        devices=[
+            DeviceSyncOut(device_name=d.device_name, last_sync_at=d.last_pull_at) for d in devices
+        ],
+        items=items,
+    )
 
 
 @router.get("/observations/{observation_id}", response_model=ObservationOut, responses=_ERRORS)

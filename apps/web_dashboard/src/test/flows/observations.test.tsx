@@ -27,7 +27,7 @@ describe('caregiver observations', () => {
     expect(screen.getByLabelText('About')).toHaveValue('fatigue')
     await userEvent.type(screen.getByLabelText(/^Note/), 'Tired after lunch, rested for an hour')
     await userEvent.click(screen.getByRole('button', { name: 'Save observation' }))
-    expect(await screen.findByText('Observation saved.')).toBeInTheDocument()
+    expect(await screen.findByText(/^Observation saved\./)).toBeInTheDocument()
     expect(await screen.findByText('Tired after lunch, rested for an hour')).toBeInTheDocument()
     const body = calls.find((c) => c.method === 'POST')!.body as { category: string; observed_at: string }
     expect(body.category).toBe('fatigue')

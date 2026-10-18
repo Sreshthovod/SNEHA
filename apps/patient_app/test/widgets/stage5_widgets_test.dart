@@ -171,15 +171,19 @@ void main() {
     await tapVisible(tester, find.text('Sharing and offline'));
 
     expect(find.text('Could not be shared'), findsWidgets);
-    expect(find.textContaining('An activity session'), findsOneWidget);
+    // The session start and, because no activity was open when the app came
+    // back, its "interrupted" ending: both wait for the server.
+    expect(find.textContaining('An activity session'), findsNWidgets(2));
     expect(
       find.text(
         'The server could not accept this yet. Your copy is kept on this phone.',
       ),
-      findsOneWidget,
+      findsNWidgets(2),
     );
     h.server.pushStatus.clear();
-    await tapVisible(tester, find.text('Try again'));
+    while (find.text('Try again').evaluate().isNotEmpty) {
+      await tapVisible(tester, find.text('Try again').first);
+    }
     await tapVisible(tester, find.text('Sync now'));
     expect(find.textContaining('An activity session'), findsNothing);
   });

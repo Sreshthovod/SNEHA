@@ -4,6 +4,7 @@ All people, memories and notes are SYNTHETIC fixtures.
 """
 
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -232,7 +233,9 @@ def test_offline_recording_then_synchronisation(api: Api, family) -> None:
 
     rec = next_rec(api, device, pid, available_slugs=["picture-pairs"])
     assert rec["difficulty"] == 2  # offline results shape later recommendations
-    today = now().date()
+    # The patient's own date (Asia/Kolkata), not UTC: otherwise this failed between
+    # 18:30 and 24:00 UTC, when India is already on the next day.
+    today = now().astimezone(ZoneInfo("Asia/Kolkata")).date()
     analytics = api.client.get(
         f"/api/v1/patients/{pid}/analytics?from={today - timedelta(days=8)}&to={today}",
         headers=owner.headers,

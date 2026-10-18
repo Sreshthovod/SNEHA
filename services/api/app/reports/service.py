@@ -96,6 +96,10 @@ def generate(
                 i.status.value,
                 i.decided_at,
                 i.decision_reason,
+                (i.evidence or {}).get("results_considered"),
+                tuple(
+                    (datetime.fromisoformat(n["at"]), n["note"]) for n in (i.context_notes or [])
+                ),
             )
             for i in review.scan(db, patient, from_date, to_date, actor_id=report.requested_by_id)
         ]

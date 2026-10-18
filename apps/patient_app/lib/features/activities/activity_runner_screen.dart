@@ -5,6 +5,7 @@ import '../../activities/run_tracker.dart';
 import '../../adaptation/session_policy.dart';
 import '../../app.dart';
 import '../../app_services.dart';
+import '../../core/connectivity/server_status.dart';
 import '../../data/api/models.dart';
 import '../../data/api/stage7_models.dart';
 import '../../data/repositories/profile_repository.dart';
@@ -78,8 +79,55 @@ class ActivityRunnerScreen extends StatefulWidget {
 }
 
 class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
+    with WidgetsBindingObserver
     implements RoundHost {
   late AppServices _services;
+
+  /// Last background sync started during this run (at most one a minute).
+  DateTime? _lastSyncAt;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Leaving the screen (home button, a call, the screen turning off) pauses
+  /// the run: the timer stops and, on return, the pause screen waits for the
+  /// person to choose "Carry on". Nothing continues or restarts by itself.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final tracker = _tracker;
+    if (tracker == null || _saving || tracker.finished || tracker.isPaused) {
+      return;
+    }
+    if (state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      setState(tracker.pause);
+      _log('paused', data: {'source': 'system'});
+    }
+  }
+
+  /// While online, fetch caregiver notes (and share progress) in the
+  /// background at most once a minute, so a tiredness note sent from the
+  /// dashboard reaches this running activity. Never waits for the network.
+  void _backgroundSync() {
+    final now = _services.clock();
+    if (_services.serverStatus.connection != ServerConnection.online) return;
+    if (_lastSyncAt != null &&
+        now.difference(_lastSyncAt!) < const Duration(minutes: 1)) {
+      return;
+    }
+    _lastSyncAt = now;
+    _services.sync.syncProfile(widget.profile.patientId).ignore();
+  }
+
   List<RoundSpec>? _rounds;
   RunTracker? _tracker;
   String? _sessionId;
@@ -375,6 +423,7 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
     setState(() => _hintMessage = null);
     // A report pulled from the dashboard during the activity applies now.
     if (await _checkCaregiverReports()) return;
+    _backgroundSync();
     if (!mounted || _saving) return;
     await _apply(
       decideInSession(Checkpoint.afterRound, _signals(), config: widget.config),
@@ -391,7 +440,7 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
 
   void _pause() {
     setState(_tracker!.pause);
-    _log('paused');
+    _log('paused', data: {'source': 'patient'});
   }
 
   void _resume() {
@@ -432,15 +481,19 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
         actionsOverflowButtonSpacing: 8,
         title: Text(s.t('runner_stop_title')),
         content: Text(s.t('runner_stop_body')),
-        // Calm, never danger-coloured: carrying on is the main choice.
+        // One short question, asked once. Stopping is the main (filled)
+        // choice: the person asked to stop, so the app never nudges them on.
+        // Calm colours, never alarming.
         actions: [
           OutlinedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(s.t('common_yes_stop')),
-          ),
-          FilledButton(
+            key: const ValueKey('stop_keep_going'),
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(s.t('common_keep_going')),
+          ),
+          FilledButton(
+            key: const ValueKey('stop_confirm'),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.t('common_yes_stop')),
           ),
         ],
       ),
@@ -496,7 +549,14 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
     if (!mounted) return;
     final ended = await _onFatigue(level);
     if (!ended && mounted) {
-      setState(() => _notice ??= context.s.t('caregiver_reported_mild'));
+      final offline =
+          _services.serverStatus.connection != ServerConnection.online;
+      setState(
+        () => _notice ??= [
+          context.s.t('caregiver_reported_mild'),
+          if (offline) context.s.t('caregiver_saved_offline'),
+        ].join(' '),
+      );
     }
   }
 

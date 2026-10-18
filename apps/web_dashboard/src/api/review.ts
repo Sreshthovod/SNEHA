@@ -16,3 +16,6 @@ export const scanReviewItems = (pid: string, periodStart: string, periodEnd: str
 /** Confirm or dismiss, with a reason. Final: a second decision is a 409 `already_decided`. */
 export const decideReviewItem = (pid: string, id: string, body: ReviewDecision) =>
   apiRequest<ReviewItem>(`${base(pid)}/${encodeURIComponent(id)}/decision`, { method: 'POST', body })
+/** Add caregiver context (any caregiver). Never changes the decision or the evidence. */
+export const addReviewContext = (pid: string, id: string, note: string) =>
+  apiRequest<ReviewItem>(`${base(pid)}/${encodeURIComponent(id)}/context`, { method: 'POST', body: { note } })

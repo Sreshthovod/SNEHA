@@ -114,6 +114,7 @@ export function baseRoutes(user: User, opts: { manager?: boolean } = {}): Route[
     // Review items: none by default. Tests that need them put their own routes first.
     { method: 'POST', path: `${P}/review-items/scan`, handler: () => [] },
     { path: `${P}/memory-relationships`, handler: () => [] },
+    { path: `${P}/fatigue-delivery`, handler: () => ({ devices: [], items: [] }) },
     { path: `${P}/review-items`, handler: () => [] },
   ]
 }

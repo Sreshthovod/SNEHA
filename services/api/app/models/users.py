@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, IdMixin, TimestampMixin
@@ -43,3 +43,7 @@ class AuthSession(IdMixin, TimestampMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
     last_used_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    # Patient devices (migration 0014): the highest change-log seq sent to this device and
+    # when, so caregivers can see whether a fatigue note has reached the phone.
+    last_pull_seq: Mapped[int | None] = mapped_column(BigInteger)
+    last_pull_at: Mapped[datetime | None] = mapped_column(UTCDateTime)

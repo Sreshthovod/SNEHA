@@ -162,12 +162,13 @@ void main() {
     await settle(tester);
     await tapVisible(tester, find.text('For caregivers'));
     await tapVisible(tester, find.text('Sharing and offline'));
-    expect(find.text('Waiting to be shared: 1'), findsOneWidget);
+    // The session start and its "interrupted" ending (no activity was open).
+    expect(find.text('Waiting to be shared: 2'), findsOneWidget);
     expect(find.text('Not shared yet'), findsOneWidget);
 
     await tapVisible(tester, find.text('Sync now'));
     expect(find.textContaining('No internet connection'), findsOneWidget);
-    expect(find.text('Waiting to be shared: 1'), findsOneWidget);
+    expect(find.text('Waiting to be shared: 2'), findsOneWidget);
 
     h.server.online = true;
     await tapVisible(tester, find.text('Sync now'));

@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, StringConstraints, model_validator
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from app.models.enums import ReviewItemStatus
 from app.schemas.base import RequestModel, ResponseModel
@@ -39,6 +39,24 @@ class ReviewDecision(RequestModel):
     )
 
 
+class ReviewContext(RequestModel):
+    note: Reason = Field(description="What the caregiver knows (kept; does not decide).")
+
+
+class ContextNoteOut(BaseModel):
+    by: str
+    at: datetime
+    note: str
+
+
+class ReviewEvidence(BaseModel):
+    result_ids: list[str] = Field(default_factory=list)
+    results_considered: int = 0
+    activities: list[str] = Field(default_factory=list)
+    missing_days: list[date] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+
+
 class ReviewItemOut(ResponseModel):
     id: str
     patient_id: str
@@ -56,6 +74,8 @@ class ReviewItemOut(ResponseModel):
     decided_by_id: str | None
     decided_at: datetime | None
     decision_reason: str | None
+    evidence: ReviewEvidence = Field(default_factory=ReviewEvidence)
+    context_notes: list[ContextNoteOut] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     wording: str = WORDING

@@ -15,10 +15,12 @@ from sqlalchemy.orm import Session
 from app.analytics.service import summarise
 from app.core.errors import AppError, conflict
 from app.core.time import utc_now
+from app.models.activities import ActivityDefinition, ActivityResult
 from app.models.care import ReviewItem
 from app.models.enums import ReviewItemStatus
 from app.models.patients import PatientProfile
 from app.services import audit
+from app.services.history import day_bounds
 
 
 def items_for_period(
@@ -77,6 +79,7 @@ def scan(
         item.observation_ids = list(flag.observation_ids)
         item.method_version = summary.method_version
         item.config_version = summary.config_version
+        item.evidence = evidence_for(db, patient, period_start, period_end, flag, summary)
     db.flush()
     if created:
         audit.record(
@@ -89,6 +92,56 @@ def scan(
             details={"count": created},
         )
     return items_for_period(db, patient.id, period_start, period_end)
+
+
+MAX_EVIDENCE_RESULTS = 100
+
+
+def evidence_for(db: Session, patient, period_start, period_end, flag, summary) -> dict:
+    """The stored records a prompt is based on. Change prompts use only the activities
+    compared with the person's usual pattern (like with like)."""
+    lower, upper = day_bounds(patient, period_start, period_end)
+    query = (
+        select(ActivityResult.id, ActivityDefinition.title)
+        .join(ActivityDefinition, ActivityDefinition.id == ActivityResult.activity_id)
+        .where(
+            ActivityResult.patient_id == patient.id,
+            ActivityResult.completed_at >= lower,
+            ActivityResult.completed_at < upper,
+        )
+        .order_by(ActivityResult.completed_at)
+    )
+    compared = summary.baseline.activities_compared
+    if flag.kind == "change" and compared:
+        query = query.where(ActivityDefinition.title.in_(compared))
+    rows = db.execute(query).all()
+    limitations = [f"{r.rule_id}: {r.reason}" for r in summary.rules_not_evaluated]
+    if summary.sync and summary.sync.may_be_incomplete and summary.sync.reason:
+        limitations.append(f"Data may be incomplete: {summary.sync.reason}.")
+    return {
+        "result_ids": [r[0] for r in rows[:MAX_EVIDENCE_RESULTS]],
+        "results_considered": len(rows),
+        "activities": sorted({r[1] for r in rows}),
+        "missing_days": [str(d) for d in summary.completeness.missing_days],
+        "limitations": limitations,
+    }
+
+
+def add_context(db: Session, item: ReviewItem, note: str, *, actor_id: str) -> ReviewItem:
+    """Append a caregiver's context; the decision and the evidence are left unchanged."""
+    notes = list(item.context_notes or [])
+    notes.append({"by": actor_id, "at": utc_now().isoformat(), "note": note})
+    item.context_notes = notes
+    audit.record(
+        db,
+        "review_item.context",
+        actor_id=actor_id,
+        patient_id=item.patient_id,
+        target_type="review_item",
+        target_id=item.id,
+        details={"count": len(notes)},
+    )
+    return item
 
 
 def decide(
