@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ApiError } from '../../api/client'
 import { ALLOWED_PHOTO_TYPES, uploadMedia } from '../../api/files'
@@ -46,6 +46,8 @@ export function MemoriesSection() {
   const [params, setParams] = useSearchParams()
   const initial = (params.get('status') as MemoryStatus | null) ?? 'all'
   const [filter, setFilter] = useState<MemoryStatus | 'all'>(isManager ? initial : 'approved')
+  const kindParam = params.get('kind') as MemoryKind | null
+  const kind: MemoryKind | 'all' = kindParam && kindParam in MEMORY_KIND_LABELS ? kindParam : 'all'
   const memories = useAsync(
     (signal) => listMemories(patient.id, filter === 'all' ? undefined : filter, signal),
     [patient.id, filter],
@@ -64,10 +66,18 @@ export function MemoriesSection() {
   const [creating, setCreating] = useState(false)
   const [message, setMessage] = useState<{ tone: 'success' | 'warning'; text: string } | null>(null)
 
+  // Status and type are both kept in the address, so a filtered view can be reloaded or shared.
+  const setQuery = (status: string, type: string) => {
+    const next: Record<string, string> = {}
+    if (status !== 'all') next.status = status
+    if (type !== 'all') next.kind = type
+    setParams(next, { replace: true })
+  }
   const onFilter = (id: string) => {
     setFilter(id as MemoryStatus | 'all')
-    setParams(id === 'all' ? {} : { status: id }, { replace: true })
+    setQuery(id, kind)
   }
+  const shown = memories.data?.filter((m) => kind === 'all' || m.kind === kind)
 
   const list = (
     <>
@@ -78,8 +88,31 @@ export function MemoriesSection() {
           <p>Add familiar people, places and stories with a photo if you have one.</p>
         </EmptyState>
       )}
+      {(memories.data?.length ?? 0) > 0 && (
+        <div className="memory-filter">
+          <SelectField
+            label="Show"
+            value={kind}
+            onChange={(e) => setQuery(filter, e.target.value)}
+            options={[
+              { value: 'all', label: `All types (${memories.data!.length})` },
+              ...Object.entries(MEMORY_KIND_LABELS).map(([value, label]) => ({
+                value,
+                label: `${label} (${memories.data!.filter((m) => m.kind === value).length})`,
+              })),
+            ]}
+          />
+        </div>
+      )}
+      {memories.data && memories.data.length > 0 && shown?.length === 0 && (
+        <EmptyState title={`No ${MEMORY_KIND_LABELS[kind as MemoryKind].toLowerCase()} memories here`}>
+          <Button variant="secondary" onClick={() => setQuery(filter, 'all')}>
+            Show all types
+          </Button>
+        </EmptyState>
+      )}
       <ul className="memory-grid">
-        {memories.data?.map((m) => (
+        {shown?.map((m) => (
           <li key={m.id}>
             <MemoryCard
               memory={m}
@@ -296,6 +329,17 @@ function MemoryFormDialog({
   // cannot create the memory twice (the server answers 409 id_conflict).
   const [clientId] = useState(() => crypto.randomUUID())
   const [photo, setPhoto] = useState<File | null>(null)
+  // Show the chosen photo before saving, so a wrong file is caught early.
+  const [preview, setPreview] = useState<string | null>(null)
+  useEffect(() => {
+    if (!photo || !ALLOWED_PHOTO_TYPES.includes(photo.type)) {
+      setPreview(null)
+      return
+    }
+    const url = URL.createObjectURL(photo)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [photo])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [error, setError] = useState<ApiError | null>(null)
   const [pending, setPending] = useState(false)
@@ -374,6 +418,19 @@ function MemoryFormDialog({
           onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
           error={errors.photo}
         />
+        {preview ? (
+          <figure className="photo-preview">
+            <img src={preview} alt="The photo you chose" className="photo" />
+            <figcaption className="field__hint">The photo you chose. It is uploaded when you save.</figcaption>
+          </figure>
+        ) : (
+          memory?.media_file_id && (
+            <figure className="photo-preview">
+              <ProtectedImage fileId={memory.media_file_id} alt={`Current photo: ${memory.title}`} />
+              <figcaption className="field__hint">Current photo</figcaption>
+            </figure>
+          )
+        )}
         {memory && (
           <TextField label="What was corrected?" hint="Optional note for the family." value={form.note} onChange={(e) => set('note')(e.target.value)} maxLength={500} />
         )}

@@ -1950,3 +1950,20 @@ h2.card__title {
 .resend-details summary {
   cursor: pointer;
 }
+
+/* Memory Bank: filter by type, and the chosen photo before it is saved. */
+.memory-filter {
+  max-width: 18rem;
+  margin-bottom: var(--space-3);
+}
+.photo-preview {
+  margin: 0 0 var(--space-4);
+  max-width: 16rem;
+}
+.photo-preview .photo {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.photo-preview figcaption {
+  margin-top: var(--space-1);
+}

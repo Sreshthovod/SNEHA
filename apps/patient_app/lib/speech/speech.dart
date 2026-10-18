@@ -21,8 +21,15 @@ abstract interface class SpeechOutput {
   /// Returns true only if the engine accepted the text for speaking.
   Future<bool> speak(String text, String languageCode);
 
+  /// Silence the voice at once (pause, stop, "I'm tired", leaving a screen).
   Future<void> stop();
+
+  /// True while the voice is speaking, so the person can be offered "Stop".
+  ValueListenable<bool> get speaking;
 }
+
+/// Shared "never speaking" value for outputs that cannot speak.
+final ValueListenable<bool> notSpeaking = ValueNotifier<bool>(false);
 
 /// Speech-to-text. See voice_input.dart for the server-backed implementation.
 ///
@@ -110,6 +117,9 @@ class UnavailableSpeechOutput implements SpeechOutput {
 
   @override
   Future<void> stop() async {}
+
+  @override
+  ValueListenable<bool> get speaking => notSpeaking;
 }
 
 /// BCP-47 locales to try on Android for each SNEHA language code. Several NE
@@ -132,10 +142,21 @@ const ttsLocales = <String, List<String>>{
 /// Android system text-to-speech via flutter_tts (on-device, no network
 /// needed once the voice is installed on the phone).
 class SystemSpeechOutput implements SpeechOutput {
-  SystemSpeechOutput([FlutterTts? tts]) : _tts = tts ?? FlutterTts();
+  SystemSpeechOutput([FlutterTts? tts]) : _tts = tts ?? FlutterTts() {
+    // The engine reports when speech starts and ends (finished, stopped or
+    // failed), so the app never shows "Stop reading" when nothing is playing.
+    _tts.setStartHandler(() => _speaking.value = true);
+    _tts.setCompletionHandler(() => _speaking.value = false);
+    _tts.setCancelHandler(() => _speaking.value = false);
+    _tts.setErrorHandler((_) => _speaking.value = false);
+  }
 
   final FlutterTts _tts;
+  final ValueNotifier<bool> _speaking = ValueNotifier<bool>(false);
   final Map<String, String?> _resolved = {};
+
+  @override
+  ValueListenable<bool> get speaking => _speaking;
 
   Future<String?> _locale(String languageCode) async {
     if (_resolved.containsKey(languageCode)) return _resolved[languageCode];
@@ -170,7 +191,9 @@ class SystemSpeechOutput implements SpeechOutput {
       await _tts.setLanguage(locale);
       await _tts.setSpeechRate(0.4); // slower, clearer speech
       final result = await _tts.speak(text);
-      return result == 1 || result == true;
+      final ok = result == 1 || result == true;
+      if (ok) _speaking.value = true;
+      return ok;
     } on Object catch (e) {
       debugPrint('TTS failed: $e');
       return false;
@@ -179,6 +202,7 @@ class SystemSpeechOutput implements SpeechOutput {
 
   @override
   Future<void> stop() async {
+    _speaking.value = false;
     try {
       await _tts.stop();
     } on Object catch (_) {}

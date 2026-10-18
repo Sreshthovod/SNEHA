@@ -430,6 +430,7 @@ class AppStrings {
     'sync_entity_other': 'An item',
     // Speech
     'speech_read_aloud': 'Read aloud',
+    'speech_stop_reading': 'Stop reading',
     'speech_input_unavailable':
         'Talking by voice is not available yet. Please type or tap a reply.',
     'speech_lang_unsupported': 'This phone has no voice for your language.',

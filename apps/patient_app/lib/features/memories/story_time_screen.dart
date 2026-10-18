@@ -9,6 +9,7 @@ import '../../app_services.dart';
 import '../../data/api/models.dart';
 import '../../data/repositories/activity_recorder.dart';
 import '../../data/repositories/profile_repository.dart';
+import '../../ui/read_aloud.dart';
 import '../../ui/widgets.dart';
 
 /// Screen 14: memory-based activity ("Story time"). Unscored reminiscence with
@@ -250,6 +251,19 @@ class _StoryTimeScreenState extends State<StoryTimeScreen> {
             ],
             const SizedBox(height: 8),
             NoticeBanner(message: prompt, icon: Icons.chat_bubble_outline),
+            const SizedBox(height: 8),
+            // Hear the memory and the question; the words stay on screen. One
+            // button per memory, so moving on (or leaving) stops the voice.
+            ReadAloudButton(
+              key: ValueKey('story_speak_$_index'),
+              text: [
+                m.title,
+                if (m.approxYear != null)
+                  s.t('story_year', {'year': m.approxYear!}),
+                ?m.description,
+                prompt,
+              ].join('. '),
+            ),
             const SizedBox(height: 8),
             if (!last)
               BigButton(

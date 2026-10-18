@@ -2,6 +2,7 @@
 // sync problems list, read aloud. All data is SYNTHETIC.
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sneha_patient/data/repositories/activity_recorder.dart';
@@ -20,15 +21,29 @@ class FakeSpeech implements SpeechOutput {
   @override
   Future<SpeechAvailability> availability(String languageCode) async => result;
 
+  /// How many times the app asked the voice to stop.
+  int stops = 0;
+  final ValueNotifier<bool> _speaking = ValueNotifier<bool>(false);
+
+  @override
+  ValueListenable<bool> get speaking => _speaking;
+
   @override
   Future<bool> speak(String text, String languageCode) async {
     if (result != SpeechAvailability.available) return false;
     spoken.add((text, languageCode));
+    _speaking.value = true;
     return true;
   }
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async {
+    stops++;
+    _speaking.value = false;
+  }
+
+  /// The voice reached the end by itself.
+  void finish() => _speaking.value = false;
 }
 
 Future<void> enableReadAloud(WidgetTester tester, Harness h) => real(

@@ -7,13 +7,28 @@ import '../speech/speech.dart';
 /// "Read aloud" for an instruction or question. Disabled — with the reason
 /// shown in words — when the setting is off or the phone has no voice for the
 /// language. Never claims audio played when it did not.
+///
+/// While it is reading, the same button becomes "Stop reading", and the voice
+/// stops when the button leaves the screen, so speech never carries on after
+/// the person has moved on.
 class ReadAloudButton extends StatefulWidget {
   const ReadAloudButton({
     super.key,
     required this.text,
     this.speakOnOpen = false,
     this.onPressed,
+    this.compact = false,
+    this.hideWhenUnavailable = false,
   });
+
+  /// Show nothing (instead of a disabled button and its reason) when reading
+  /// aloud is not possible. For secondary places such as a hint, where the
+  /// main instructions button already explains why.
+  final bool hideWhenUnavailable;
+
+  /// A small speaker icon (for chat replies) instead of the labelled button.
+  /// When reading aloud is not possible it is hidden rather than explained.
+  final bool compact;
 
   final String text;
 
@@ -35,10 +50,39 @@ class _ReadAloudButtonState extends State<ReadAloudButton> {
   String? _failure;
   bool _spokeOnOpen = false;
 
+  /// This button started the voice that is playing now.
+  bool _mine = false;
+  SpeechOutput? _output;
+
+  void _onSpeakingChanged() {
+    if (!_output!.speaking.value && _mine && mounted) {
+      setState(() => _mine = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    final output = _output;
+    if (output != null) {
+      output.speaking.removeListener(_onSpeakingChanged);
+      if (_mine && output.speaking.value) output.stop();
+    }
+    super.dispose();
+  }
+
+  void _stop() {
+    _output?.stop();
+    setState(() => _mine = false);
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final services = AppScope.of(context);
+    if (!identical(_output, services.speechOutput)) {
+      _output?.speaking.removeListener(_onSpeakingChanged);
+      _output = services.speechOutput..speaking.addListener(_onSpeakingChanged);
+    }
     final lang = services.controller.settings.languageCode;
     if (lang != _language) {
       _language = lang;
@@ -57,9 +101,13 @@ class _ReadAloudButtonState extends State<ReadAloudButton> {
   }
 
   Future<void> _speak(AppServices services) async {
+    setState(() => _mine = true);
     final ok = await services.speechOutput.speak(widget.text, _language!);
     if (mounted) {
-      setState(() => _failure = ok ? null : context.s.t('speech_not_played'));
+      setState(() {
+        _failure = ok ? null : context.s.t('speech_not_played');
+        _mine = ok && services.speechOutput.speaking.value;
+      });
     }
   }
 
@@ -86,6 +134,32 @@ class _ReadAloudButtonState extends State<ReadAloudButton> {
             enabledInSettings && availability == SpeechAvailability.available;
         final theme = Theme.of(context);
         final note = _failure ?? reason;
+        final reading = _mine && services.speechOutput.speaking.value;
+        final VoidCallback? onPressed = reading
+            ? _stop
+            : canSpeak
+            ? () {
+                widget.onPressed?.call();
+                _speak(services);
+              }
+            : null;
+        final label = s.t(
+          reading ? 'speech_stop_reading' : 'speech_read_aloud',
+        );
+        final icon = reading ? Icons.stop_circle_outlined : Icons.volume_up;
+        if ((widget.compact || widget.hideWhenUnavailable) &&
+            !canSpeak &&
+            !reading) {
+          return const SizedBox.shrink();
+        }
+        if (widget.compact) {
+          return IconButton(
+            tooltip: label,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: onPressed,
+            icon: Icon(icon, size: 28),
+          );
+        }
         // Sized to its label (not full width), with the reason beside it, so
         // it does not push the question and answers down.
         final button = OutlinedButton.icon(
@@ -93,14 +167,9 @@ class _ReadAloudButtonState extends State<ReadAloudButton> {
             minimumSize: const Size(64, 64),
             padding: const EdgeInsets.symmetric(horizontal: 16),
           ),
-          onPressed: canSpeak
-              ? () {
-                  widget.onPressed?.call();
-                  _speak(services);
-                }
-              : null,
-          icon: const Icon(Icons.volume_up, size: 28),
-          label: Text(s.t('speech_read_aloud')),
+          onPressed: onPressed,
+          icon: Icon(icon, size: 28),
+          label: Text(label),
         );
         final noteStyle = theme.textTheme.bodySmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,

@@ -143,6 +143,10 @@ void main() {
     await tapVisible(tester, find.widgetWithText(FilledButton, 'Start'));
     expect(speech.spoken, isNotEmpty, reason: 'read aloud when it appeared');
     final spokenOnOpen = speech.spoken.length;
+    // While the automatic reading plays, the person can stop it.
+    expect(find.widgetWithText(OutlinedButton, 'Stop reading'), findsOneWidget);
+    speech.finish();
+    await tester.pump();
 
     await tapVisible(tester, find.widgetWithText(OutlinedButton, 'Read aloud'));
     expect(speech.spoken.length, spokenOnOpen + 1);

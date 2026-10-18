@@ -299,12 +299,16 @@ class NoticeBanner extends StatelessWidget {
     required this.message,
     this.icon,
     this.tone,
+    this.action,
     @Deprecated('Use tone: NoticeTone.positive') this.positive = false,
   });
 
   final String message;
   final IconData? icon;
   final NoticeTone? tone;
+
+  /// Optional control under the message (for example "Read aloud").
+  final Widget? action;
 
   /// Kept for older call sites; same as `tone: NoticeTone.positive`.
   final bool positive;
@@ -360,10 +364,22 @@ class NoticeBanner extends StatelessWidget {
             Icon(icon ?? defaultIcon, color: fg, size: 28),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                message,
-                style: theme.textTheme.bodyLarge?.copyWith(color: fg),
-              ),
+              child: action == null
+                  ? Text(
+                      message,
+                      style: theme.textTheme.bodyLarge?.copyWith(color: fg),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          message,
+                          style: theme.textTheme.bodyLarge?.copyWith(color: fg),
+                        ),
+                        const SizedBox(height: 8),
+                        action!,
+                      ],
+                    ),
             ),
           ],
         ),

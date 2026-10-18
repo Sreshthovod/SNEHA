@@ -95,7 +95,15 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _silence();
     super.dispose();
+  }
+
+  /// Stop any reading aloud. Pausing, stopping, "I'm tired", skipping and
+  /// leaving the screen all mean "quiet now": the voice never carries on.
+  void _silence() {
+    // `_services` is set with the rounds in didChangeDependencies.
+    if (_rounds != null) _services.speechOutput.stop();
   }
 
   /// Leaving the screen (home button, a call, the screen turning off) pauses
@@ -109,6 +117,7 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
     }
     if (state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused) {
+      _silence();
       setState(tracker.pause);
       _log('paused', data: {'source': 'system'});
     }
@@ -439,6 +448,7 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
   }
 
   void _pause() {
+    _silence();
     setState(_tracker!.pause);
     _log('paused', data: {'source': 'patient'});
   }
@@ -464,6 +474,7 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
   }
 
   void _skip() {
+    _silence();
     _log('round_skipped');
     _tracker!.skipRound();
     _afterRound();
@@ -471,6 +482,7 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
 
   Future<void> _confirmStop() async {
     final s = context.s;
+    _silence();
     _tracker!.pause();
     setState(() {});
     final stop = await showDialog<bool>(
@@ -516,6 +528,7 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
   /// "I'm tired": end gently, record the tiredness (never as a mistake) and
   /// offer a rest.
   Future<void> _tired() async {
+    _silence();
     _log('fatigue_reported', data: {'source': 'patient'});
     _log(
       'adaptation',
@@ -789,6 +802,18 @@ class _ActivityRunnerScreenState extends State<ActivityRunnerScreen>
                                 key: const ValueKey('runner_hint_message'),
                                 message: _hintMessage!,
                                 icon: Icons.lightbulb_outline,
+                                // The hint can be heard as well as read. It
+                                // speaks by itself only for people the engine
+                                // already reads questions to first.
+                                action: ReadAloudButton(
+                                  key: ValueKey(
+                                    'hint_speak_${tracker.roundIndex}_'
+                                    '${tracker.hintsThisRound}',
+                                  ),
+                                  text: _hintMessage!,
+                                  speakOnOpen: widget.readAloudFirst,
+                                  hideWhenUnavailable: true,
+                                ),
                               ),
                           ],
                         ),

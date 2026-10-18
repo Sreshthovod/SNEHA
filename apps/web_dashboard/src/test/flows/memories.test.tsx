@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Memory } from '../../api/types'
 import { apiError, baseRoutes, calls, CAREGIVER, mockApi, P, PATIENT, renderApp } from '../harness'
 
@@ -106,5 +106,64 @@ describe('Memory Bank approval', () => {
     expect(dialog.contains(document.activeElement)).toBe(true)
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('Memory Bank: type filter and photo preview', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const memories: Memory[] = [
+    { ...pending, id: 'm-place', kind: 'place', title: 'Synthetic tea garden', status: 'approved' },
+    { ...pending, id: 'm-person', kind: 'person', title: 'Synthetic cousin', status: 'approved' },
+    { ...pending, id: 'm-story', kind: 'story', title: 'Synthetic Bihu story', status: 'approved' },
+  ]
+
+  it('filters by type with counts, keeps it in the address and can show all again', async () => {
+    mockApi([
+      ...baseRoutes(CAREGIVER, { manager: true }),
+      { path: `${P}/memories`, handler: () => memories },
+    ])
+    const { router } = renderApp(`/app/patients/${PATIENT.id}/memories`)
+    const select = await screen.findByLabelText('Show')
+    const requestsBefore = calls.length
+    expect(within(select).getByRole('option', { name: 'All types (3)' })).toBeInTheDocument()
+    expect(within(select).getByRole('option', { name: 'Object (0)' })).toBeInTheDocument()
+    await userEvent.selectOptions(select, 'person')
+    expect(screen.getByRole('heading', { name: 'Synthetic cousin' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Synthetic tea garden' })).toBeNull()
+    expect(router.state.location.search).toBe('?kind=person')
+
+    await userEvent.selectOptions(screen.getByLabelText('Show'), 'object')
+    expect(screen.getByText('No object memories here')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Show all types' }))
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(3)
+    // No new requests: filtering by type happens on the list already loaded.
+    expect(calls.length).toBe(requestsBefore)
+  })
+
+  it('shows the chosen photo before saving and releases it afterwards', async () => {
+    const created: string[] = []
+    const revoked: string[] = []
+    vi.stubGlobal('URL', Object.assign(URL, {
+      createObjectURL: () => {
+        created.push('blob:synthetic-preview')
+        return 'blob:synthetic-preview'
+      },
+      revokeObjectURL: (u: string) => revoked.push(u),
+    }))
+    mockApi([
+      ...baseRoutes(CAREGIVER, { manager: true }),
+      { path: `${P}/memories`, handler: () => [] },
+    ])
+    renderApp(`/app/patients/${PATIENT.id}/memories`)
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a memory' }))
+    const dialog = screen.getByRole('dialog', { name: 'Add a memory' })
+    expect(within(dialog).queryByAltText('The photo you chose')).toBeNull()
+    const file = new File([new Uint8Array([137, 80, 78, 71])], 'synthetic.png', { type: 'image/png' })
+    await userEvent.upload(within(dialog).getByLabelText(/^Photo/), file)
+    expect(within(dialog).getByAltText('The photo you chose')).toHaveAttribute('src', 'blob:synthetic-preview')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(revoked).toEqual(['blob:synthetic-preview'])
+    expect(calls.some((c) => c.method === 'POST')).toBe(false)
   })
 })

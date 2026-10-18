@@ -14,6 +14,7 @@ import '../../data/api/stage7_models.dart';
 import '../../data/repositories/activity_recorder.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../speech/speech.dart';
+import '../../ui/read_aloud.dart';
 import '../../ui/widgets.dart';
 import '../activities/activity_launcher.dart';
 
@@ -659,38 +660,53 @@ class _Bubble extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final s = context.s;
     final user = message.fromUser;
-    return Align(
-      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-      child: Semantics(
-        label:
-            '${user ? s.t('talk_you') : s.t('talk_helper')}: ${message.text}',
-        // New helper replies are announced.
-        liveRegion: !user,
-        excludeSemantics: true,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.all(16),
-          constraints: const BoxConstraints(maxWidth: 520),
-          decoration: BoxDecoration(
-            color: user ? scheme.primaryContainer : scheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(18),
-              topRight: const Radius.circular(18),
-              bottomLeft: Radius.circular(user ? 18 : 4),
-              bottomRight: Radius.circular(user ? 4 : 18),
-            ),
-            border: Border.all(
-              color: user ? scheme.primaryContainer : scheme.outlineVariant,
-            ),
+    final bubble = Semantics(
+      label: '${user ? s.t('talk_you') : s.t('talk_helper')}: ${message.text}',
+      // New helper replies are announced.
+      liveRegion: !user,
+      excludeSemantics: true,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(16),
+        constraints: const BoxConstraints(maxWidth: 520),
+        decoration: BoxDecoration(
+          color: user ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(user ? 18 : 4),
+            bottomRight: Radius.circular(user ? 4 : 18),
           ),
-          child: Text(
-            message.text,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: user ? scheme.onPrimaryContainer : scheme.onSurface,
-            ),
+          border: Border.all(
+            color: user ? scheme.primaryContainer : scheme.outlineVariant,
+          ),
+        ),
+        child: Text(
+          message.text,
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: user ? scheme.onPrimaryContainer : scheme.onSurface,
           ),
         ),
       ),
+    );
+    return Align(
+      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
+      child: user
+          ? bubble
+          // The helper's replies can be heard as well as read. Outside the
+          // bubble's label so screen readers reach the button too. Hidden
+          // when reading aloud is off or there is no voice.
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                bubble,
+                ReadAloudButton(
+                  key: ObjectKey(message),
+                  text: message.text,
+                  compact: true,
+                ),
+              ],
+            ),
     );
   }
 }
