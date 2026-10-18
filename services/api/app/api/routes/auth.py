@@ -1,26 +1,39 @@
-"""Registration, login, logout and patient-device pairing."""
+"""Registration, login, logout, email verification, password reset and device pairing."""
 
-from fastapi import APIRouter, Request, status
+from datetime import timedelta
+
+from fastapi import APIRouter, BackgroundTasks, Request, status
 from sqlalchemy import select, update
 
 from app.api.deps import DbSessionDep, PrincipalDep, SettingsDep
+from app.core.config import Settings
 from app.core.errors import AppError, conflict
-from app.core.rate_limit import client_key, login_limiter, pairing_limiter
+from app.core.rate_limit import client_key, email_limiter, login_limiter, pairing_limiter
 from app.core.security import hash_pairing_code, hash_password
 from app.core.time import utc_now
-from app.models.enums import AuditOutcome, AuthSessionKind, UserRole
+from app.models.enums import AuditOutcome, AuthSessionKind, EmailTokenPurpose, UserRole
 from app.models.patients import DevicePairingCode, PatientProfile
-from app.models.users import User
+from app.models.users import AuthSession, User
 from app.schemas.auth import (
     DevicePairRequest,
+    EmailRequest,
     LoginRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UserOut,
+    VerifyEmailRequest,
 )
 from app.schemas.common import ErrorResponse
-from app.services import audit
+from app.services import audit, email_tokens
 from app.services.auth import authenticate_password, issue_session, normalise_email
+from app.services.email import (
+    EmailSender,
+    EmailSenderDep,
+    deliver,
+    password_reset_email,
+    verification_email,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -38,7 +51,14 @@ _ERRORS = {
     responses={409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
     summary="Create a caregiver or clinician account",
 )
-def register(body: RegisterRequest, db: DbSessionDep, request: Request) -> User:
+def register(
+    body: RegisterRequest,
+    db: DbSessionDep,
+    settings: SettingsDep,
+    sender: EmailSenderDep,
+    background: BackgroundTasks,
+    request: Request,
+) -> User:
     login_limiter.check(f"register:{client_key(request)}")
     email = normalise_email(body.email)
     if db.scalar(select(User.id).where(User.email == email)) is not None:
@@ -61,6 +81,7 @@ def register(body: RegisterRequest, db: DbSessionDep, request: Request) -> User:
         request=request,
         details={"role": user.role.value},
     )
+    _send_verification(db, user, settings, sender, background)
     db.commit()
     return user
 
@@ -84,6 +105,22 @@ def login(
             commit=True,
         )
         raise
+    if settings.require_email_verification and not user.email_verified:
+        # Checked after the password, so this never reveals whether an account exists.
+        audit.record(
+            db,
+            "auth.login",
+            outcome=AuditOutcome.FAILURE,
+            actor_id=user.id,
+            request=request,
+            details={"reason": "email_not_verified"},
+            commit=True,
+        )
+        raise AppError(
+            403,
+            "email_not_verified",
+            "Please confirm your email first. We sent you a link when you registered.",
+        )
     issued = issue_session(db, user, settings, kind=AuthSessionKind.PASSWORD)
     audit.record(db, "auth.login", actor_id=user.id, request=request)
     db.commit()
@@ -106,6 +143,166 @@ def logout(principal: PrincipalDep, db: DbSessionDep, request: Request) -> None:
 @router.get("/me", response_model=UserOut, responses={401: {"model": ErrorResponse}})
 def me(principal: PrincipalDep) -> User:
     return principal.user
+
+
+def _send_verification(
+    db: DbSessionDep,
+    user: User,
+    settings: Settings,
+    sender: EmailSender,
+    background: BackgroundTasks,
+) -> None:
+    if not user.email:
+        return
+    hours = settings.email_verification_ttl_hours
+    token = email_tokens.issue(db, user, EmailTokenPurpose.VERIFY_EMAIL, timedelta(hours=hours))
+    link = f"{settings.dashboard_url}/verify-email?token={token}"
+    background.add_task(
+        deliver, sender, verification_email(user.email, user.full_name, link, hours)
+    )
+
+
+def _limit_email(request: Request, email: str) -> None:
+    login_limiter.check(f"email:{client_key(request)}")
+    email_limiter.check(f"email:{email}")
+
+
+_ACCEPTED = {
+    status.HTTP_202_ACCEPTED: {
+        "description": "Accepted. The same answer whether or not an "
+        "account exists for this address."
+    },
+    422: {"model": ErrorResponse},
+    429: {"model": ErrorResponse},
+}
+
+
+@router.post(
+    "/verify-email",
+    response_model=UserOut,
+    responses={400: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    summary="Confirm an email address with the link sent by email",
+)
+def verify_email(body: VerifyEmailRequest, db: DbSessionDep, request: Request) -> User:
+    login_limiter.check(f"verify:{client_key(request)}")
+    user = email_tokens.consume(db, body.token, EmailTokenPurpose.VERIFY_EMAIL)
+    if user is None:
+        db.rollback()
+        raise AppError(
+            400,
+            "invalid_link",
+            "This link has expired or was already used. Ask for a new one from the sign-in page.",
+        )
+    if user.email_verified_at is None:
+        user.email_verified_at = utc_now()
+    audit.record(
+        db,
+        "auth.email_verified",
+        actor_id=user.id,
+        target_type="user",
+        target_id=user.id,
+        request=request,
+    )
+    db.commit()
+    return user
+
+
+@router.post(
+    "/resend-verification",
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=_ACCEPTED,
+    summary="Send a new email confirmation link",
+)
+def resend_verification(
+    body: EmailRequest,
+    db: DbSessionDep,
+    settings: SettingsDep,
+    sender: EmailSenderDep,
+    background: BackgroundTasks,
+    request: Request,
+) -> None:
+    email = normalise_email(body.email)
+    _limit_email(request, email)
+    user = db.scalar(select(User).where(User.email == email))
+    if user is not None and user.is_active and not user.email_verified:
+        _send_verification(db, user, settings, sender, background)
+        db.commit()
+
+
+@router.post(
+    "/forgot-password",
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=_ACCEPTED,
+    summary="Email a password reset link",
+)
+def forgot_password(
+    body: EmailRequest,
+    db: DbSessionDep,
+    settings: SettingsDep,
+    sender: EmailSenderDep,
+    background: BackgroundTasks,
+    request: Request,
+) -> None:
+    email = normalise_email(body.email)
+    _limit_email(request, email)
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None or not user.is_active or user.password_hash is None:
+        return
+    minutes = settings.password_reset_ttl_minutes
+    token = email_tokens.issue(
+        db, user, EmailTokenPurpose.RESET_PASSWORD, timedelta(minutes=minutes)
+    )
+    audit.record(
+        db,
+        "auth.password_reset_requested",
+        actor_id=user.id,
+        target_type="user",
+        target_id=user.id,
+        request=request,
+    )
+    db.commit()
+    link = f"{settings.dashboard_url}/reset-password?token={token}"
+    background.add_task(deliver, sender, password_reset_email(email, user.full_name, link, minutes))
+
+
+@router.post(
+    "/reset-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={400: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    summary="Choose a new password with the link sent by email; signs out everywhere",
+)
+def reset_password(body: ResetPasswordRequest, db: DbSessionDep, request: Request) -> None:
+    login_limiter.check(f"reset:{client_key(request)}")
+    user = email_tokens.consume(db, body.token, EmailTokenPurpose.RESET_PASSWORD)
+    if user is None:
+        db.rollback()
+        raise AppError(
+            400,
+            "invalid_link",
+            "This link has expired or was already used. Ask for a new one.",
+        )
+    now = utc_now()
+    user.password_hash = hash_password(body.password)
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    # Opening the emailed link proves the address belongs to this person.
+    if user.email_verified_at is None:
+        user.email_verified_at = now
+    db.execute(
+        update(AuthSession)
+        .where(AuthSession.user_id == user.id, AuthSession.revoked_at.is_(None))
+        .values(revoked_at=now)
+        .execution_options(synchronize_session=False)
+    )
+    audit.record(
+        db,
+        "auth.password_reset",
+        actor_id=user.id,
+        target_type="user",
+        target_id=user.id,
+        request=request,
+    )
+    db.commit()
 
 
 @router.post(

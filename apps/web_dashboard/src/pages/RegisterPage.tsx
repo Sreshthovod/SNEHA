@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { SelectField, TextField } from '../components/ui/Field'
 import { Notice } from '../components/ui/States'
+import { ResendVerification } from './AccountEmailPages'
 
 type Role = RegisterRequest['role']
 
@@ -14,7 +15,7 @@ export function RegisterPage() {
   const [form, setForm] = useState({ full_name: '', email: '', password: '', role: 'caregiver' as Role })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
-  const [done, setDone] = useState<Role | null>(null)
+  const [done, setDone] = useState<{ role: Role; email: string } | null>(null)
   const [pending, setPending] = useState(false)
 
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }))
@@ -31,7 +32,7 @@ export function RegisterPage() {
     setPending(true)
     try {
       await register({ ...form, email: form.email.trim(), full_name: form.full_name.trim() })
-      setDone(form.role)
+      setDone({ role: form.role, email: form.email.trim() })
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : 'Could not create the account.')
     } finally {
@@ -42,17 +43,25 @@ export function RegisterPage() {
   if (done)
     return (
       <Card title="Account created">
-        {done === 'clinician' ? (
+        <Notice tone="info">
+          We sent a link to <strong>{done.email}</strong>. Open it to confirm your email; it works
+          once and expires in 2 days. Check your spam folder if you do not see it.
+        </Notice>
+        {done.role === 'clinician' ? (
           <p>
             Your clinician account needs to be verified by the SNEHA team before families can share
             records with you. You can sign in now; shared patients appear once verified and granted.
           </p>
         ) : (
-          <p>You can now sign in and add the person you care for.</p>
+          <p>After confirming your email, sign in and add the person you care for.</p>
         )}
         <Link to="/login" className="button">
           Go to sign in
         </Link>
+        <details className="resend-details">
+          <summary>No email after a few minutes?</summary>
+          <ResendVerification email={done.email} />
+        </details>
       </Card>
     )
 

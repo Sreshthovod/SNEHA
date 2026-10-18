@@ -28,6 +28,27 @@ services:
         value: deterministic
       - key: SNEHA_CORS_ALLOWED_ORIGINS
         value: https://sneha-dashboard.onrender.com
+      # Links in account emails point here.
+      - key: SNEHA_DASHBOARD_URL
+        value: https://sneha-dashboard.onrender.com
+      # Account emails (verification, password reset). Until SMTP is configured this is
+      # "disabled" and sign-in does not wait for email confirmation. To turn it on, set
+      # SNEHA_EMAIL_BACKEND=smtp and SNEHA_REQUIRE_EMAIL_VERIFICATION=true here, and enter
+      # the SMTP values below in the Render dashboard (never in this file).
+      - key: SNEHA_EMAIL_BACKEND
+        value: disabled
+      - key: SNEHA_REQUIRE_EMAIL_VERIFICATION
+        value: "false"
+      - key: SNEHA_EMAIL_FROM
+        sync: false
+      - key: SNEHA_SMTP_HOST
+        sync: false
+      - key: SNEHA_SMTP_PORT
+        sync: false
+      - key: SNEHA_SMTP_USERNAME
+        sync: false
+      - key: SNEHA_SMTP_PASSWORD
+        sync: false
 
   - type: web
     name: sneha-dashboard

@@ -64,6 +64,27 @@ Operational notes:
 - Clinician verification and admin creation: `uv run python scripts/manage.py --help`.
 - Logs contain request IDs, not request bodies. Keep it that way.
 
+### Account emails (verification and password reset)
+
+Any SMTP provider works (for example Brevo, Gmail with an app password, Amazon SES,
+Mailgun). Set, in the host's secret settings, never in the repository:
+
+| Variable | Example |
+|---|---|
+| `SNEHA_EMAIL_BACKEND` | `smtp` (`disabled` sends nothing; `log` is development only and refused in production) |
+| `SNEHA_SMTP_HOST` / `SNEHA_SMTP_PORT` | `smtp-relay.brevo.com` / `587` |
+| `SNEHA_SMTP_SECURITY` | `starttls` (port 587) or `ssl` (port 465) |
+| `SNEHA_SMTP_USERNAME` / `SNEHA_SMTP_PASSWORD` | the provider's SMTP login |
+| `SNEHA_EMAIL_FROM` | `SNEHA <an address the provider has verified>` |
+| `SNEHA_DASHBOARD_URL` | `https://sneha-dashboard.onrender.com` (links point here; https required) |
+| `SNEHA_REQUIRE_EMAIL_VERIFICATION` | `true` once emails are delivered |
+
+Emails are sent after the response, so a failing provider never breaks registration; the
+failure is logged (address and subject only). Test delivery by registering with an address
+you can read, then turn on `SNEHA_REQUIRE_EMAIL_VERIFICATION`. Accounts created before that
+can confirm with "Send a new confirmation link" on the sign-in page, or by resetting their
+password.
+
 ## Dashboard
 
 ```bash

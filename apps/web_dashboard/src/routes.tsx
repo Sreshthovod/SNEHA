@@ -3,6 +3,7 @@ import type { RouteObject } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
 import { RequireAuth } from './components/layout/Guards'
 import { OutletPassthrough, RoleHome } from './components/layout/RouteHelpers'
+import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from './pages/AccountEmailPages'
 import { CaregiverDashboardPage } from './pages/CaregiverDashboardPage'
 import { ClinicianDashboardPage } from './pages/ClinicianDashboardPage'
 import { LoginPage } from './pages/LoginPage'
@@ -34,6 +35,9 @@ export const routes: RouteObject[] = [
       { index: true, element: <LoginPage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
+      { path: 'verify-email', element: <VerifyEmailPage /> },
+      { path: 'forgot-password', element: <ForgotPasswordPage /> },
+      { path: 'reset-password', element: <ResetPasswordPage /> },
       {
         path: 'app',
         element: <RequireAuth><OutletPassthrough /></RequireAuth>,

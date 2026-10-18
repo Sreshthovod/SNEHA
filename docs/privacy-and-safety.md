@@ -51,6 +51,18 @@ state, and each record stores who gave it (`patient`, `legal_representative`,
 - Pairing codes: 8 characters from a 31-symbol alphabet (~40 bits), single use, 15-minute
   expiry, stored as an HMAC-SHA-256 with `SNEHA_SECRET_KEY`, rate limited. Issuing a new
   code invalidates older ones.
+- Email verification and password reset (migration 0016): single-use links with 256-bit
+  random tokens; the DB stores only SHA-256. Verification links expire after 48 h, reset
+  links after 30 min; a new link retires older ones of the same kind. "Resend" and "forgot
+  password" always answer `202`, whether or not the account exists, and are limited to 3
+  emails per address per 15 min. A reset sets the new password, clears lockout, confirms the
+  email and revokes all of that user's sessions. With `SNEHA_REQUIRE_EMAIL_VERIFICATION=true`,
+  sign-in is refused (`403 email_not_verified`) only after the password is checked, so it
+  never reveals whether an account exists. Email confirmation (`email_verified_at`) is
+  separate from `is_verified`, the administrator's check of a clinician. Emails are plain
+  text with no patient information; the dashboard removes the token from the address bar
+  after reading it. Registration still answers `409 email_taken` for an existing address
+  (unchanged).
 - Tokens are bearer headers, not cookies, so CSRF does not apply. The dashboard must keep
   tokens in memory or `sessionStorage`, never in `localStorage` (Stage 4).
 

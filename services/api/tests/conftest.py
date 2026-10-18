@@ -6,6 +6,7 @@ SNEHA_TEST_POSTGRES_URL to run the SAME suite against PostgreSQL instead
 """
 
 import os
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -17,10 +18,11 @@ from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session
 
 from app.core.config import Environment, Settings, get_settings
-from app.core.rate_limit import login_limiter, pairing_limiter
+from app.core.rate_limit import email_limiter, login_limiter, pairing_limiter
 from app.db.migrations import alembic_config
 from app.db.session import build_engine, get_engine, get_sessionmaker
 from app.main import create_app
+from app.services.email import OutgoingEmail, get_email_sender
 
 POSTGRES_URL = os.environ.get("SNEHA_TEST_POSTGRES_URL")
 
@@ -66,10 +68,29 @@ def migrated_engine(database_url: str) -> Iterator[Engine]:
 def _reset_rate_limits() -> None:
     login_limiter.reset()
     pairing_limiter.reset()
+    email_limiter.reset()
+
+
+class Outbox(list):
+    """Captures account emails instead of sending them."""
+
+    def send(self, message: OutgoingEmail) -> None:
+        self.append(message)
+
+    def link(self, index: int = -1) -> str:
+        """The token from the link in a captured email."""
+        match = re.search(r"token=([A-Za-z0-9_-]+)", self[index].text)
+        assert match, self[index].text
+        return match.group(1)
 
 
 @pytest.fixture
-def app(settings: Settings, migrated_engine: Engine) -> FastAPI:
+def outbox() -> Outbox:
+    return Outbox()
+
+
+@pytest.fixture
+def app(settings: Settings, migrated_engine: Engine, outbox: Outbox) -> FastAPI:
     from sqlalchemy.orm import sessionmaker
 
     factory = sessionmaker(bind=migrated_engine, autoflush=False, expire_on_commit=False)
@@ -88,6 +109,7 @@ def app(settings: Settings, migrated_engine: Engine) -> FastAPI:
     application.dependency_overrides[get_engine] = lambda: migrated_engine
     application.dependency_overrides[get_db] = _db
     application.dependency_overrides[get_sessionmaker] = lambda: factory
+    application.dependency_overrides[get_email_sender] = lambda: outbox
     return application
 
 

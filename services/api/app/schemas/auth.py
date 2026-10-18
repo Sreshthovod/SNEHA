@@ -26,6 +26,22 @@ class LoginRequest(RequestModel):
     password: Annotated[str, StringConstraints(min_length=1, max_length=128)]
 
 
+LinkToken = Annotated[str, StringConstraints(strip_whitespace=True, min_length=20, max_length=128)]
+
+
+class EmailRequest(RequestModel):
+    email: EmailStr
+
+
+class VerifyEmailRequest(RequestModel):
+    token: LinkToken
+
+
+class ResetPasswordRequest(RequestModel):
+    token: LinkToken
+    password: Password = Field(description="12–128 characters. Passphrases are encouraged.")
+
+
 class DevicePairRequest(RequestModel):
     code: Annotated[str, StringConstraints(strip_whitespace=True, min_length=8, max_length=16)]
     device_name: Annotated[
@@ -39,6 +55,9 @@ class UserOut(ResponseModel):
     full_name: str
     role: UserRole
     is_verified: bool
+    email_verified: bool = Field(
+        default=False, description="The person has confirmed this email address."
+    )
     created_at: datetime
 
 

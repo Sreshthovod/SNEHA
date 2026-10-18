@@ -7,6 +7,7 @@ import { TextField } from '../components/ui/Field'
 import { Notice } from '../components/ui/States'
 import { homePathFor, useAuth } from '../state/auth'
 import { useSettings } from '../state/settings'
+import { ResendVerification } from './AccountEmailPages'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -20,6 +21,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [formError, setFormError] = useState<string | null>(null)
+  const [unverified, setUnverified] = useState(false)
   const [pending, setPending] = useState(false)
 
   if (state.status === 'signed_in') return <Navigate to={homePathFor(state.user)} replace />
@@ -31,6 +33,7 @@ export function LoginPage() {
     if (!password) next.password = 'Enter your password.'
     setErrors(next)
     setFormError(null)
+    setUnverified(false)
     if (Object.keys(next).length) return
     setPending(true)
     try {
@@ -38,6 +41,7 @@ export function LoginPage() {
       const from = (location.state as { from?: string } | null)?.from
       navigate(from && from.startsWith('/app') ? from : homePathFor(user), { replace: true })
     } catch (error) {
+      setUnverified(error instanceof ApiError && error.code === 'email_not_verified')
       setFormError(
         error instanceof ApiError ? error.message : 'Sign-in failed. Please try again.',
       )
@@ -82,6 +86,10 @@ export function LoginPage() {
             {t('login.submit')}
           </Button>
         </form>
+        {unverified && <ResendVerification email={email.trim()} />}
+        <p className="landing__alt">
+          <Link to="/forgot-password">Forgot your password?</Link>
+        </p>
         <p className="landing__alt">
           {t('login.noAccount')} <Link to="/register">{t('login.register')}</Link>
         </p>

@@ -69,7 +69,7 @@ models/           SQLAlchemy models (23 tables)
 schemas/          Pydantic request/response models = the API contract
 services/         access (authorization), auth, audit, activities, sync, files, history, changes
 api/routes/       thin HTTP handlers, one module per area
-migrations/       Alembic 0001–0015 (… 0009 activity events, 0010 fatigue level + fatigue sync, 0011 review items, 0012 memory relationship, 0013 instructions_repeated event, 0014 device pull progress, 0015 review evidence and context notes)
+migrations/       Alembic 0001–0016 (… 0009 activity events, 0010 fatigue level + fatigue sync, 0011 review items, 0012 memory relationship, 0013 instructions_repeated event, 0014 device pull progress, 0015 review evidence and context notes, 0016 email verification and password reset)
 review/           review items: automated prompts (with evidence) → caregiver context notes and decision → clinician (confirmed only)
 config/           personalization.toml, activities.toml, analytics.toml (versioned thresholds)
 ```

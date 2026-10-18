@@ -1937,3 +1937,16 @@ h2.card__title {
     letter-spacing: -0.02em;
   }
 }
+
+/* Account emails: resend link and forgot-password helpers. */
+.resend-form {
+  display: grid;
+  gap: var(--space-3, 0.75rem);
+  margin-top: var(--space-4, 1rem);
+}
+.resend-details {
+  margin-top: var(--space-4, 1rem);
+}
+.resend-details summary {
+  cursor: pointer;
+}

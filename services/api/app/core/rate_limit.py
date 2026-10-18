@@ -58,3 +58,5 @@ def client_key(request: Request) -> str:
 
 login_limiter = RateLimiter(limit=10, window_seconds=60)
 pairing_limiter = RateLimiter(limit=10, window_seconds=60)
+# Emails (verification, password reset): per address, so nobody can flood an inbox.
+email_limiter = RateLimiter(limit=3, window_seconds=15 * 60)

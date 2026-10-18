@@ -28,7 +28,7 @@ from app.models.patients import (
     PatientProfile,
 )
 from app.models.sync import AuditEvent, SyncChange, SyncMutation
-from app.models.users import AuthSession, User
+from app.models.users import AuthSession, EmailToken, User
 
 __all__ = [
     "ActivityDefinition",
@@ -38,6 +38,7 @@ __all__ = [
     "ActivitySession",
     "AuditEvent",
     "AuthSession",
+    "EmailToken",
     "Base",
     "CaregiverObservation",
     "CaregiverRelationship",

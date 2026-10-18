@@ -33,6 +33,25 @@ class ConversationProvider(StrEnum):
     LOCAL = "local"
 
 
+class EmailBackend(StrEnum):
+    """How account emails (verification, password reset) are delivered.
+
+    `log` writes them to the application log: development only, because the links are secret.
+    `smtp` sends through any SMTP provider (Brevo, Gmail app password, SES, Mailgun, ...).
+    `disabled` sends nothing (email verification cannot then be required).
+    """
+
+    LOG = "log"
+    SMTP = "smtp"
+    DISABLED = "disabled"
+
+
+class SmtpSecurity(StrEnum):
+    STARTTLS = "starttls"  # usually port 587
+    SSL = "ssl"  # usually port 465
+    NONE = "none"  # local test servers only
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="SNEHA_",
@@ -64,6 +83,21 @@ class Settings(BaseSettings):
     lockout_minutes: int = Field(default=15, ge=1, le=24 * 60)
     pairing_code_ttl_minutes: int = Field(default=15, ge=5, le=24 * 60)
     max_clinician_grant_days: int = Field(default=180, ge=1, le=730)
+
+    # Account emails. Links in emails point to the dashboard.
+    email_backend: EmailBackend = EmailBackend.LOG
+    email_from: str = "SNEHA <no-reply@localhost>"
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_security: SmtpSecurity = SmtpSecurity.STARTTLS
+    smtp_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+    dashboard_url: str = "http://localhost:5173"
+    # When true, caregivers and clinicians must confirm their email before signing in.
+    require_email_verification: bool = False
+    email_verification_ttl_hours: int = Field(default=48, ge=1, le=24 * 14)
+    password_reset_ttl_minutes: int = Field(default=30, ge=5, le=24 * 60)
 
     # Protected file storage (outside any web root).
     media_root: Path = Path("./var/media")
@@ -132,11 +166,31 @@ class Settings(BaseSettings):
                 problems.append("SNEHA_CORS_ALLOWED_ORIGINS must not contain '*'")
             elif any(not o.startswith("https://") for o in self.cors_allowed_origins):
                 problems.append("SNEHA_CORS_ALLOWED_ORIGINS must all use https://")
+            if self.email_backend == EmailBackend.LOG:
+                # The log would hold working verification and reset links.
+                problems.append("SNEHA_EMAIL_BACKEND must be 'smtp' or 'disabled'")
+            if self.email_backend == EmailBackend.SMTP:
+                if not self.smtp_host:
+                    problems.append("SNEHA_SMTP_HOST must be set for SNEHA_EMAIL_BACKEND=smtp")
+                if self.smtp_security == SmtpSecurity.NONE:
+                    problems.append("SNEHA_SMTP_SECURITY must be 'starttls' or 'ssl'")
+            if not self.dashboard_url.startswith("https://"):
+                problems.append("SNEHA_DASHBOARD_URL must use https://")
             if problems:
                 raise ValueError(
                     f"Invalid configuration for environment '{self.environment}': "
                     + "; ".join(problems)
                 )
+        return self
+
+    @model_validator(mode="after")
+    def _check_email(self) -> "Settings":
+        if self.require_email_verification and self.email_backend == EmailBackend.DISABLED:
+            raise ValueError(
+                "SNEHA_REQUIRE_EMAIL_VERIFICATION needs an email backend: "
+                "set SNEHA_EMAIL_BACKEND to 'smtp' (or 'log' in development)"
+            )
+        self.dashboard_url = self.dashboard_url.rstrip("/")
         return self
 
     @property

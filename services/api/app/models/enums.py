@@ -15,6 +15,11 @@ class AuthSessionKind(StrEnum):
     DEVICE = "device"  # paired patient device
 
 
+class EmailTokenPurpose(StrEnum):
+    VERIFY_EMAIL = "verify_email"
+    RESET_PASSWORD = "reset_password"  # noqa: S105 - enum value, not a secret
+
+
 class Language(StrEnum):
     """Languages SNEHA intends to support (ISO 639 codes).
 

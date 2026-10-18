@@ -27,3 +27,35 @@ export async function logout(): Promise<void> {
     setToken(null)
   }
 }
+
+export function verifyEmail(token: string): Promise<User> {
+  return apiRequest<User>('/auth/verify-email', { method: 'POST', body: { token }, auth: false })
+}
+
+/** Always "accepted": the server never says whether an account exists. */
+export function resendVerification(email: string): Promise<void> {
+  return apiRequest<void>('/auth/resend-verification', {
+    method: 'POST',
+    body: { email },
+    auth: false,
+    responseType: 'none',
+  })
+}
+
+export function forgotPassword(email: string): Promise<void> {
+  return apiRequest<void>('/auth/forgot-password', {
+    method: 'POST',
+    body: { email },
+    auth: false,
+    responseType: 'none',
+  })
+}
+
+export function resetPassword(token: string, password: string): Promise<void> {
+  return apiRequest<void>('/auth/reset-password', {
+    method: 'POST',
+    body: { token, password },
+    auth: false,
+    responseType: 'none',
+  })
+}

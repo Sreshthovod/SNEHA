@@ -44,6 +44,8 @@ def test_production_accepts_complete_configuration() -> None:
         database_url=PG_URL,
         secret_key=STRONG_SECRET,
         cors_allowed_origins="https://dash.example.org",
+        dashboard_url="https://dash.example.org",
+        email_backend="disabled",
     )
     assert settings.environment is Environment.PRODUCTION
 
@@ -100,6 +102,8 @@ def test_production_hides_interactive_docs() -> None:
         database_url=PG_URL,
         secret_key=STRONG_SECRET,
         cors_allowed_origins="https://dash.example.org",
+        dashboard_url="https://dash.example.org",
+        email_backend="disabled",
     )
     client = TestClient(create_app(settings))
     for path in ("/docs", "/redoc", "/openapi.json"):

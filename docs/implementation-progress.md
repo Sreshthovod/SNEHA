@@ -101,3 +101,17 @@ Plan, metric definitions and limits: [caregiver-analytics-plan.md](caregiver-ana
 | 7 | Tests | ✅ API 374, phone 232, dashboard 73 passing; tsc, lint, build, contract check clean |
 
 Versions: Alembic head **0015**. Engine and config unchanged (1.2.0 / 2026.10.3).
+
+## Account emails: verification and password reset (2026-10-18)
+
+| # | Increment | Status |
+|---|---|---|
+| 1 | `users.email_verified_at` and `email_tokens` (hashed, single-use links), migration 0016 | ✅ |
+| 2 | API: verify-email, resend-verification, forgot-password, reset-password; optional "confirm before sign-in" | ✅ |
+| 3 | Any SMTP provider (`SNEHA_EMAIL_BACKEND=smtp`); `log` for development; production refuses unsafe settings | ✅ |
+| 4 | Dashboard: confirm-email, forgot-password and reset-password pages; resend link on sign-in and after registering | ✅ |
+| 5 | Tests | ✅ API 388 (+ migrations and auth on PostgreSQL), dashboard 80 passing |
+
+Details: [privacy-and-safety.md](privacy-and-safety.md#authentication), setup:
+[deployment.md](deployment.md#account-emails-verification-and-password-reset).
+Versions: Alembic head **0016**.
