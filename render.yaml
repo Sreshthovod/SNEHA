@@ -31,12 +31,11 @@ services:
       # Links in account emails point here.
       - key: SNEHA_DASHBOARD_URL
         value: https://sneha-dashboard.onrender.com
-      # Account emails (verification, password reset). Until SMTP is configured this is
-      # "disabled" and sign-in does not wait for email confirmation. To turn it on, set
-      # SNEHA_EMAIL_BACKEND=smtp and SNEHA_REQUIRE_EMAIL_VERIFICATION=true here, and enter
-      # the SMTP values below in the Render dashboard (never in this file).
+      # Account emails (verification, password reset) through SMTP (Brevo). The SMTP values
+      # below are entered in the Render dashboard, never in this file. Set
+      # SNEHA_REQUIRE_EMAIL_VERIFICATION=true once delivery has been checked.
       - key: SNEHA_EMAIL_BACKEND
-        value: disabled
+        value: smtp
       - key: SNEHA_REQUIRE_EMAIL_VERIFICATION
         value: "false"
       - key: SNEHA_EMAIL_FROM
