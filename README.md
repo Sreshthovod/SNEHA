@@ -1,6 +1,6 @@
 # SNEHA
 
-> **📱 Patient app (Android):** [Download sneha-patient.apk](https://github.com/Sreshthovod/SNEHA/releases/download/v0.1.0-demo/sneha-patient.apk)
+> **📱 Patient app (Android):** [Download sneha-patient.apk](https://github.com/Sreshthovod/SNEHA/releases/latest/download/sneha-patient.apk)
 >
 > **🖥️ Caregiver login (web dashboard):** https://sneha-dashboard.onrender.com
 >
@@ -31,7 +31,7 @@ patient information.
 
 | What | Where |
 |---|---|
-| Patient app for Android | **[Download sneha-patient.apk](https://github.com/Sreshthovod/SNEHA/releases/download/v0.1.0-demo/sneha-patient.apk)** ([release notes](https://github.com/Sreshthovod/SNEHA/releases/tag/v0.1.0-demo)) |
+| Patient app for Android | **[Download sneha-patient.apk](https://github.com/Sreshthovod/SNEHA/releases/latest/download/sneha-patient.apk)** ([release notes](https://github.com/Sreshthovod/SNEHA/releases/latest)) |
 | Caregiver and clinician dashboard | https://sneha-dashboard.onrender.com |
 | API (health check) | https://sneha-api.onrender.com/api/v1/health |
 
