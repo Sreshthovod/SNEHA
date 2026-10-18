@@ -1,5 +1,11 @@
 # SNEHA
 
+> **📱 Patient app (Android):** [Download sneha-patient.apk](https://github.com/Sreshthovod/SNEHA/releases/download/v0.1.0-demo/sneha-patient.apk)
+>
+> **🖥️ Caregiver login (web dashboard):** https://sneha-dashboard.onrender.com
+>
+> Demo server, synthetic data only. Setup steps: [Try it](#try-it-no-laptop-needed).
+
 An assistive cognitive-activity and memory-support platform for older adults experiencing
 dementia-related difficulties, designed for India's North Eastern Region. **SNEHA is not a
 diagnostic system.**
