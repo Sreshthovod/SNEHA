@@ -5,6 +5,11 @@ import type { ErrorResponse } from './types'
 
 export const API_PREFIX = '/api/v1'
 const DEFAULT_TIMEOUT_MS = 15000
+/**
+ * Account requests (sign in, register, password reset) may be the first request after the
+ * hosted server has been asleep; waking it can take close to a minute on a free plan.
+ */
+export const WAKE_TIMEOUT_MS = 90000
 
 let baseUrlOverride: string | null = null
 /** For integration tests only. */

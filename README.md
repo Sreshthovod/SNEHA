@@ -55,8 +55,10 @@ shares its records whenever it is online.
 
 ### Things to know about the demo server
 
-- It runs on Render's free plan: after about 15 minutes without use it sleeps, so the first
-  login or sync can take up to a minute.
+- It runs on Render's free plan, which sleeps after about 15 minutes without use. A scheduled
+  GitHub Action ([keep-warm.yml](.github/workflows/keep-warm.yml)) pings it every 10 minutes,
+  and the sign-in page wakes it as soon as it opens and waits up to 90 seconds, saying so
+  if it is waking up. A rare cold start can still make the first sign-in take about a minute.
 - The free database expires after about 30 days, and uploaded photos are lost when the server
   restarts (photos already on the phone stay there). A paid instance with a disk avoids both.
 - The APK is signed with a development key; it is for testing, not for distribution.

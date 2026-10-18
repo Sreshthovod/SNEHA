@@ -1,0 +1,21 @@
+# Keeps the free-plan demo API on Render awake, so the first sign-in does not wait for a
+# cold start (the free plan sleeps after ~15 minutes without requests). It only calls the
+# public health endpoint; no secrets, no data. Remove it when moving to a paid instance.
+name: Keep demo server awake
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping the API health endpoint
+        run: |
+          curl --silent --show-error --fail --max-time 120 --retry 2 --retry-delay 10 \
+            https://sneha-api.onrender.com/api/v1/health

@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { register } from '../api/auth'
+import { register, wakeServer } from '../api/auth'
 import { ApiError } from '../api/client'
 import type { RegisterRequest } from '../api/types'
 import { Button } from '../components/ui/Button'
@@ -18,6 +18,7 @@ export function RegisterPage() {
   const [done, setDone] = useState<{ role: Role; email: string } | null>(null)
   const [pending, setPending] = useState(false)
 
+  useEffect(() => wakeServer(), [])
   const set = (key: keyof typeof form) => (value: string) => setForm((f) => ({ ...f, [key]: value }))
 
   async function onSubmit(event: FormEvent) {

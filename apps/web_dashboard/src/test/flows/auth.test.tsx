@@ -1,6 +1,6 @@
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { apiError, baseRoutes, calls, CAREGIVER, CLINICIAN, mockApi, renderApp, analytics } from '../harness'
 
 describe('login', () => {
@@ -11,7 +11,49 @@ describe('login', () => {
     expect(screen.getByText(/Enter your email address/)).toBeInTheDocument()
     expect(screen.getByText('Enter your password.')).toBeInTheDocument()
     expect(screen.getByLabelText(/Email/)).toHaveAttribute('aria-invalid', 'true')
-    expect(calls).toHaveLength(0)
+    // Only the wake-up ping: nothing is sent for an incomplete form.
+    expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0)
+  })
+
+  it('wakes the server as soon as the sign-in page opens', async () => {
+    mockApi([{ path: '/health', handler: () => ({ status: 'ok' }) }])
+    renderApp('/login', { signedIn: false })
+    await waitFor(() => expect(calls.some((c) => c.path === '/health')).toBe(true))
+  })
+
+  it('says the server is waking up when sign-in is slow, then signs in', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      let answer: (v: unknown) => void = () => undefined
+      mockApi([
+        ...baseRoutes(CAREGIVER),
+        { path: '/health', handler: () => ({ status: 'ok' }) },
+        {
+          method: 'POST',
+          path: '/auth/login',
+          handler: () => new Promise((resolve) => (answer = resolve)),
+        },
+        { path: /\/memories$/, handler: () => [] },
+        { path: /\/observations$/, handler: () => [] },
+        { path: /\/analytics$/, handler: () => analytics() },
+      ])
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const { router } = renderApp('/login', { signedIn: false })
+      await user.type(screen.getByLabelText(/Email/), CAREGIVER.email!)
+      await user.type(screen.getByLabelText(/Password/), 'correct horse battery')
+      await user.click(screen.getByRole('button', { name: 'Sign in' }))
+      expect(screen.queryByText(/Waking up the SNEHA server/)).toBeNull()
+      await act(async () => {
+        vi.advanceTimersByTime(4500)
+      })
+      expect(screen.getByText(/Waking up the SNEHA server/)).toBeInTheDocument()
+      await act(async () => {
+        answer({ access_token: 'tok-slow', token_type: 'bearer', expires_at: '2026-10-16T00:00:00Z', user: CAREGIVER })
+      })
+      await waitFor(() => expect(router.state.location.pathname).toBe('/app/dashboard'))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('shows the server message when sign-in fails', async () => {

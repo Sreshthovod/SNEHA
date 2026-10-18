@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { wakeServer } from '../api/auth'
 import { ApiError } from '../api/client'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -22,6 +23,12 @@ export function LoginPage() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [unverified, setUnverified] = useState(false)
+  // The hosted server may be asleep: wake it while the person types, and say so in words
+  // if signing in takes a while instead of looking stuck.
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    if (state.status !== 'signed_in') wakeServer()
+  }, [state.status])
   const [pending, setPending] = useState(false)
 
   if (state.status === 'signed_in') return <Navigate to={homePathFor(state.user)} replace />
@@ -36,6 +43,7 @@ export function LoginPage() {
     setUnverified(false)
     if (Object.keys(next).length) return
     setPending(true)
+    const slowTimer = window.setTimeout(() => setSlow(true), 4000)
     try {
       const user = await signIn({ email: email.trim(), password })
       const from = (location.state as { from?: string } | null)?.from
@@ -46,6 +54,8 @@ export function LoginPage() {
         error instanceof ApiError ? error.message : 'Sign-in failed. Please try again.',
       )
     } finally {
+      window.clearTimeout(slowTimer)
+      setSlow(false)
       setPending(false)
     }
   }
@@ -81,6 +91,12 @@ export function LoginPage() {
             error={errors.password}
             required
           />
+          {slow && (
+            <Notice tone="info">
+              Waking up the SNEHA server. The first sign-in after a quiet spell can take up to a
+              minute; please keep this page open.
+            </Notice>
+          )}
           {formError && <Notice tone="danger">{formError}</Notice>}
           <Button type="submit" pending={pending} className="button--block">
             {t('login.submit')}
