@@ -242,3 +242,67 @@ def test_deployed_settings_refuse_unsafe_email_configuration() -> None:
         dashboard_url="https://dashboard.example.org/",
     )
     assert ok.dashboard_url == "https://dashboard.example.org"
+
+
+# ---------------------------------------------------------------- Brevo HTTPS API
+
+
+def test_brevo_api_request_has_sender_recipient_and_key() -> None:
+    import json
+
+    from app.services.email import BrevoApiSender, OutgoingEmail
+
+    settings = Settings(
+        _env_file=None,
+        email_backend=EmailBackend.BREVO_API,
+        brevo_api_key="synthetic-brevo-key",
+        email_from="SNEHA <sender.synthetic@example.org>",
+    )
+    req = BrevoApiSender(settings).request(
+        OutgoingEmail(to="carer.synthetic@example.org", subject="Hello", text="Synthetic body")
+    )
+    assert req.full_url == "https://api.brevo.com/v3/smtp/email"
+    assert req.get_header("Api-key") == "synthetic-brevo-key"
+    body = json.loads(req.data)
+    assert body == {
+        "sender": {"email": "sender.synthetic@example.org", "name": "SNEHA"},
+        "to": [{"email": "carer.synthetic@example.org"}],
+        "subject": "Hello",
+        "textContent": "Synthetic body",
+    }
+    plain = Settings(_env_file=None, email_from="sender.synthetic@example.org")
+    assert json.loads(
+        BrevoApiSender(plain).request(OutgoingEmail(to="a@example.org", subject="s", text="t")).data
+    )["sender"] == {"email": "sender.synthetic@example.org"}
+
+
+def test_brevo_refusal_is_logged_with_its_reason(monkeypatch, caplog) -> None:
+    import io
+    import urllib.error
+
+    from app.services import email as email_module
+
+    def refuse(*args, **kwargs):
+        raise urllib.error.HTTPError(
+            email_module.BREVO_API_URL,
+            400,
+            "Bad Request",
+            {},
+            io.BytesIO(b'{"message":"sender not valid"}'),
+        )
+
+    monkeypatch.setattr(email_module.urllib.request, "urlopen", refuse)
+    settings = Settings(
+        _env_file=None, email_backend=EmailBackend.BREVO_API, brevo_api_key="synthetic"
+    )
+    email_module.deliver(
+        email_module.BrevoApiSender(settings),
+        email_module.OutgoingEmail(to="a@example.org", subject="s", text="t"),
+    )
+    assert "sender not valid" in caplog.text
+
+
+def test_deployed_brevo_api_needs_a_key() -> None:
+    with pytest.raises(ValueError, match="SNEHA_BREVO_API_KEY"):
+        deployed(email_backend=EmailBackend.BREVO_API)
+    assert deployed(email_backend=EmailBackend.BREVO_API, brevo_api_key="k").brevo_api_key

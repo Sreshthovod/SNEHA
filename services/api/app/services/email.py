@@ -5,12 +5,15 @@ response (FastAPI background task), so a slow or failing provider never delays o
 request, and the response is the same whether or not an account exists.
 """
 
+import json
 import logging
 import smtplib
 import ssl
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from email.message import EmailMessage as MimeMessage
-from email.utils import make_msgid
+from email.utils import make_msgid, parseaddr
 from typing import Annotated, Protocol
 
 from fastapi import Depends
@@ -77,9 +80,54 @@ class SmtpSender:
             server.send_message(mime)
 
 
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+class BrevoApiSender:
+    """Brevo's transactional email API over HTTPS (works where outgoing SMTP is blocked)."""
+
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+
+    def request(self, message: OutgoingEmail) -> urllib.request.Request:
+        name, address = parseaddr(self._settings.email_from)
+        sender = {"email": address, **({"name": name} if name else {})}
+        body = {
+            "sender": sender,
+            "to": [{"email": message.to}],
+            "subject": message.subject,
+            "textContent": message.text,
+        }
+        key = self._settings.brevo_api_key
+        return urllib.request.Request(
+            BREVO_API_URL,
+            data=json.dumps(body).encode(),
+            method="POST",
+            headers={
+                "api-key": key.get_secret_value() if key else "",
+                "content-type": "application/json",
+                "accept": "application/json",
+            },
+        )
+
+    def send(self, message: OutgoingEmail) -> None:
+        timeout = self._settings.smtp_timeout_seconds
+        # Fixed https URL (not user input), so S310 does not apply.
+        try:
+            with urllib.request.urlopen(self.request(message), timeout=timeout) as response:  # noqa: S310
+                if response.status >= 300:
+                    raise RuntimeError(f"Brevo API answered {response.status}")
+        except urllib.error.HTTPError as error:
+            # Brevo explains refusals (unverified sender, bad key, account not activated).
+            detail = error.read(500).decode(errors="replace")
+            raise RuntimeError(f"Brevo API answered {error.code}: {detail}") from None
+
+
 def get_email_sender(settings: Annotated[Settings, Depends(get_settings)]) -> EmailSender:
     if settings.email_backend == EmailBackend.SMTP:
         return SmtpSender(settings)
+    if settings.email_backend == EmailBackend.BREVO_API:
+        return BrevoApiSender(settings)
     if settings.email_backend == EmailBackend.LOG:
         return LogSender()
     return DisabledSender()

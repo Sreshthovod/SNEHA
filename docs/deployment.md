@@ -71,13 +71,18 @@ Mailgun). Set, in the host's secret settings, never in the repository:
 
 | Variable | Example |
 |---|---|
-| `SNEHA_EMAIL_BACKEND` | `smtp` (`disabled` sends nothing; `log` is development only and refused in production) |
+| `SNEHA_EMAIL_BACKEND` | `smtp`, or `brevo_api` where outgoing SMTP is blocked (`disabled` sends nothing; `log` is development only and refused in production) |
+| `SNEHA_BREVO_API_KEY` | Brevo → SMTP & API → API keys (only for `brevo_api`) |
 | `SNEHA_SMTP_HOST` / `SNEHA_SMTP_PORT` | `smtp-relay.brevo.com` / `587` |
 | `SNEHA_SMTP_SECURITY` | `starttls` (port 587) or `ssl` (port 465) |
 | `SNEHA_SMTP_USERNAME` / `SNEHA_SMTP_PASSWORD` | the provider's SMTP login |
 | `SNEHA_EMAIL_FROM` | `SNEHA <an address the provider has verified>` |
 | `SNEHA_DASHBOARD_URL` | `https://sneha-dashboard.onrender.com` (links point here; https required) |
 | `SNEHA_REQUIRE_EMAIL_VERIFICATION` | `true` once emails are delivered |
+
+**Render's free plan blocks outgoing SMTP** (connections to ports 25/465/587 time out), so the
+blueprint uses `brevo_api`, which sends over HTTPS. The sender address must be verified in
+Brevo.
 
 Emails are sent after the response, so a failing provider never breaks registration; the
 failure is logged (address and subject only). Test delivery by registering with an address

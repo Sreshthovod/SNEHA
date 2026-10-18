@@ -31,13 +31,16 @@ services:
       # Links in account emails point here.
       - key: SNEHA_DASHBOARD_URL
         value: https://sneha-dashboard.onrender.com
-      # Account emails (verification, password reset) through SMTP (Brevo). The SMTP values
-      # below are entered in the Render dashboard, never in this file. Set
-      # SNEHA_REQUIRE_EMAIL_VERIFICATION=true once delivery has been checked.
+      # Account emails (verification, password reset) through Brevo's HTTPS API: Render's
+      # free plan blocks outgoing SMTP. SNEHA_BREVO_API_KEY and SNEHA_EMAIL_FROM are entered
+      # in the Render dashboard, never in this file. Set SNEHA_REQUIRE_EMAIL_VERIFICATION=true
+      # once delivery has been checked. (The SMTP values are only for hosts that allow SMTP.)
       - key: SNEHA_EMAIL_BACKEND
-        value: smtp
+        value: brevo_api
       - key: SNEHA_REQUIRE_EMAIL_VERIFICATION
         value: "false"
+      - key: SNEHA_BREVO_API_KEY
+        sync: false
       - key: SNEHA_EMAIL_FROM
         sync: false
       - key: SNEHA_SMTP_HOST

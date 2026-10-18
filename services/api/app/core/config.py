@@ -38,11 +38,14 @@ class EmailBackend(StrEnum):
 
     `log` writes them to the application log: development only, because the links are secret.
     `smtp` sends through any SMTP provider (Brevo, Gmail app password, SES, Mailgun, ...).
+    `brevo_api` sends through Brevo's HTTPS API, for hosts that block outgoing SMTP
+    (for example Render's free plan).
     `disabled` sends nothing (email verification cannot then be required).
     """
 
     LOG = "log"
     SMTP = "smtp"
+    BREVO_API = "brevo_api"
     DISABLED = "disabled"
 
 
@@ -93,6 +96,7 @@ class Settings(BaseSettings):
     smtp_password: SecretStr | None = None
     smtp_security: SmtpSecurity = SmtpSecurity.STARTTLS
     smtp_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+    brevo_api_key: SecretStr | None = None
     dashboard_url: str = "http://localhost:5173"
     # When true, caregivers and clinicians must confirm their email before signing in.
     require_email_verification: bool = False
@@ -168,12 +172,14 @@ class Settings(BaseSettings):
                 problems.append("SNEHA_CORS_ALLOWED_ORIGINS must all use https://")
             if self.email_backend == EmailBackend.LOG:
                 # The log would hold working verification and reset links.
-                problems.append("SNEHA_EMAIL_BACKEND must be 'smtp' or 'disabled'")
+                problems.append("SNEHA_EMAIL_BACKEND must be 'smtp', 'brevo_api' or 'disabled'")
             if self.email_backend == EmailBackend.SMTP:
                 if not self.smtp_host:
                     problems.append("SNEHA_SMTP_HOST must be set for SNEHA_EMAIL_BACKEND=smtp")
                 if self.smtp_security == SmtpSecurity.NONE:
                     problems.append("SNEHA_SMTP_SECURITY must be 'starttls' or 'ssl'")
+            if self.email_backend == EmailBackend.BREVO_API and self.brevo_api_key is None:
+                problems.append("SNEHA_BREVO_API_KEY must be set for SNEHA_EMAIL_BACKEND=brevo_api")
             if not self.dashboard_url.startswith("https://"):
                 problems.append("SNEHA_DASHBOARD_URL must use https://")
             if problems:
